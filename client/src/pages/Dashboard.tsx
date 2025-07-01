@@ -71,7 +71,7 @@ export default function Dashboard() {
       });
       // Redirect to edit page after successful upload
       setTimeout(() => {
-        setLocation(`/resume-builder?edit=${newResume.id}`);
+        setLocation(`/builder/${newResume.id}`);
       }, 1000);
     },
     onError: (error) => {

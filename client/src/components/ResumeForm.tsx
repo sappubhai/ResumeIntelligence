@@ -212,28 +212,33 @@ export default function ResumeForm({
   useEffect(() => {
     if (initialData) {
       console.log("Form reset with initialData:", initialData);
-      const resetData = {
-        title: initialData.title || "My Resume",
-        fullName: initialData.fullName || "",
-        professionalTitle: initialData.professionalTitle || "",
-        email: initialData.email || "",
-        mobileNumber: initialData.mobileNumber || "",
-        dateOfBirth: initialData.dateOfBirth || "",
-        address: initialData.address || "",
-        linkedinId: initialData.linkedinId || "",
-        summary: initialData.summary || "",
-        workExperience: (initialData.workExperience as any[]) || [],
-        education: (initialData.education as any[]) || [],
-        skills: (initialData.skills as any[]) || [],
-        certifications: (initialData.certifications as any[]) || [],
-        projects: (initialData.projects as any[]) || [],
-        achievements: (initialData.achievements as any[]) || [],
-        languages: (initialData.languages as any[]) || [],
-        hobbies: initialData.hobbies || "",
-        additionalInfo: initialData.additionalInfo || "",
-      };
-      console.log("Reset data:", resetData);
-      form.reset(resetData);
+      // Handle case where initialData might be an array or object
+      const resumeData = Array.isArray(initialData) ? initialData[0] : initialData;
+      
+      if (resumeData) {
+        const resetData = {
+          title: resumeData.title || "My Resume",
+          fullName: resumeData.fullName || "",
+          professionalTitle: resumeData.professionalTitle || "",
+          email: resumeData.email || "",
+          mobileNumber: resumeData.mobileNumber || "",
+          dateOfBirth: resumeData.dateOfBirth || "",
+          address: resumeData.address || "",
+          linkedinId: resumeData.linkedinId || "",
+          summary: resumeData.summary || "",
+          workExperience: (resumeData.workExperience as any[]) || [],
+          education: (resumeData.education as any[]) || [],
+          skills: (resumeData.skills as any[]) || [],
+          certifications: (resumeData.certifications as any[]) || [],
+          projects: (resumeData.projects as any[]) || [],
+          achievements: (resumeData.achievements as any[]) || [],
+          languages: (resumeData.languages as any[]) || [],
+          hobbies: resumeData.hobbies || "",
+          additionalInfo: resumeData.additionalInfo || "",
+        };
+        console.log("Reset data:", resetData);
+        form.reset(resetData);
+      }
     }
   }, [initialData, form]);
 
