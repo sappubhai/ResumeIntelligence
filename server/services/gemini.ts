@@ -272,10 +272,24 @@ ${resumeText}
       throw new Error("No content received from Gemini");
     }
 
-    console.log("Raw Gemini response:", content);
+    console.log("Raw Gemini response length:", content.length);
+    console.log("Raw Gemini response preview:", content.substring(0, 500));
 
     try {
-      const parsedData = JSON.parse(content);
+      // Clean up the response - sometimes Gemini adds extra text or formatting
+      let cleanContent = content.trim();
+      
+      // Find the first { and last } to extract only the JSON object
+      const firstBrace = cleanContent.indexOf('{');
+      const lastBrace = cleanContent.lastIndexOf('}');
+      
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        cleanContent = cleanContent.substring(firstBrace, lastBrace + 1);
+      }
+      
+      console.log("Cleaned content preview:", cleanContent.substring(0, 500));
+      
+      const parsedData = JSON.parse(cleanContent);
       
       // Add unique IDs to array items
       if (parsedData.workExperience) {
