@@ -1,6 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import mammoth from 'mammoth';
-import { parseResumeWithAI, type ParsedResumeData } from './gemini';
+import { parseResumeWithAI, type ParsedResumeData } from './gemini-simple';
 
 export async function parseResumeFile(buffer: Buffer, mimetype: string): Promise<ParsedResumeData> {
   let textContent = '';
