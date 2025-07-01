@@ -159,6 +159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const resumeData = insertResumeSchema.parse({
         ...parsedData,
         userId,
+        templateId: null, // Allow user to select template later
         title: parsedData.fullName ? `${parsedData.fullName}'s Resume` : 'Parsed Resume',
       });
       
