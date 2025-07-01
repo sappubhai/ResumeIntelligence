@@ -208,6 +208,32 @@ export default function ResumeForm({
     name: "languages",
   });
 
+  // Reset form when initialData changes (e.g., when resume loads from API)
+  useEffect(() => {
+    if (initialData) {
+      form.reset({
+        title: initialData.title || "My Resume",
+        fullName: initialData.fullName || "",
+        professionalTitle: initialData.professionalTitle || "",
+        email: initialData.email || "",
+        mobileNumber: initialData.mobileNumber || "",
+        dateOfBirth: initialData.dateOfBirth || "",
+        address: initialData.address || "",
+        linkedinId: initialData.linkedinId || "",
+        summary: initialData.summary || "",
+        workExperience: (initialData.workExperience as any[]) || [],
+        education: (initialData.education as any[]) || [],
+        skills: (initialData.skills as any[]) || [],
+        certifications: (initialData.certifications as any[]) || [],
+        projects: (initialData.projects as any[]) || [],
+        achievements: (initialData.achievements as any[]) || [],
+        languages: (initialData.languages as any[]) || [],
+        hobbies: initialData.hobbies || "",
+        additionalInfo: initialData.additionalInfo || "",
+      });
+    }
+  }, [initialData, form]);
+
   useEffect(() => {
     const subscription = form.watch(() => {
       const formHasChanges = form.formState.isDirty;
