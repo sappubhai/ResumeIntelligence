@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +31,7 @@ export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
   const [showLoadingModal, setShowLoadingModal] = useState(false);
 
   useEffect(() => {
@@ -66,8 +67,12 @@ export default function Dashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
       toast({
         title: "Resume Uploaded Successfully",
-        description: "Your resume has been parsed and is ready for editing.",
+        description: "Redirecting to edit your resume...",
       });
+      // Redirect to edit page after successful upload
+      setTimeout(() => {
+        setLocation(`/resume-builder?edit=${newResume.id}`);
+      }, 1000);
     },
     onError: (error) => {
       setShowLoadingModal(false);

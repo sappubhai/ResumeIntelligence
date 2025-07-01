@@ -211,7 +211,8 @@ export default function ResumeForm({
   // Reset form when initialData changes (e.g., when resume loads from API)
   useEffect(() => {
     if (initialData) {
-      form.reset({
+      console.log("Form reset with initialData:", initialData);
+      const resetData = {
         title: initialData.title || "My Resume",
         fullName: initialData.fullName || "",
         professionalTitle: initialData.professionalTitle || "",
@@ -230,7 +231,9 @@ export default function ResumeForm({
         languages: (initialData.languages as any[]) || [],
         hobbies: initialData.hobbies || "",
         additionalInfo: initialData.additionalInfo || "",
-      });
+      };
+      console.log("Reset data:", resetData);
+      form.reset(resetData);
     }
   }, [initialData, form]);
 
