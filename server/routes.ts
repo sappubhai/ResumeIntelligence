@@ -154,12 +154,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const parsedData = await parseResumeFile(req.file.buffer, req.file.mimetype);
       
+      // Get the first available template as default
+      const templates = await storage.getTemplates();
+      const defaultTemplate = templates[0];
+      
+      if (!defaultTemplate) {
+        return res.status(500).json({ message: "No templates available" });
+      }
+      
       // Create a new resume with parsed data
       const userId = req.user.claims.sub;
       const resumeData = insertResumeSchema.parse({
         ...parsedData,
         userId,
-        templateId: null, // Allow user to select template later
+        templateId: defaultTemplate.id, // Use first available template as default
         title: parsedData.fullName ? `${parsedData.fullName}'s Resume` : 'Parsed Resume',
       });
       
