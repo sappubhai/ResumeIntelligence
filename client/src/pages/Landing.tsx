@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 export default function Landing() {
   const [, setLocation] = useLocation();
   const { user, logoutMutation } = useAuth();
-  
+
   const handleLogin = () => {
     setLocation("/auth");
   };
@@ -30,7 +30,7 @@ export default function Landing() {
               <FileText className="text-primary text-2xl" />
               <h1 className="text-xl font-bold text-neutral-800">ResumeBuilder Pro</h1>
             </div>
-            
+
             {user ? (
               <div className="flex items-center space-x-4">
                 <div className="flex items-center space-x-2">
