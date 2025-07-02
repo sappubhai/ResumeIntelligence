@@ -209,6 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const resumeId = parseInt(req.params.id);
       const userId = req.user.id;
+      const { templateId } = req.body;
       
       // Get resume and check ownership
       const resume = await storage.getResume(resumeId);
@@ -219,9 +220,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
       
-      // Get template
+      // Get template - prioritize templateId from request body
       let template;
-      if (resume.templateId) {
+      if (templateId) {
+        template = await storage.getTemplate(templateId);
+      } else if (resume.templateId) {
         template = await storage.getTemplate(resume.templateId);
       }
       

@@ -76,18 +76,44 @@ export default function TemplatePreview({
     
     if (templateName.includes('modern') || templateName.includes('professional')) {
       return (
-        <div className="bg-white rounded shadow-sm p-3 mb-3">
-          <div className="flex items-center space-x-2 mb-2">
-            <div className={`w-8 h-8 ${colorClasses.accent} rounded-full`}></div>
-            <div>
-              <div className="h-2 bg-neutral-800 rounded w-16 mb-1"></div>
-              <div className="h-1 bg-neutral-400 rounded w-12"></div>
+        <div className="bg-white rounded shadow-sm p-2 mb-2 text-xs">
+          {/* Header section with name and contact */}
+          <div className="mb-2 pb-1 border-b border-neutral-200">
+            <div className="h-2 bg-neutral-800 rounded w-16 mb-1"></div>
+            <div className="h-1 bg-neutral-400 rounded w-12 mb-1"></div>
+            <div className="flex justify-between text-[6px] text-neutral-500">
+              <span>+91 9049373474</span>
+              <span>Mumbai, IN</span>
             </div>
           </div>
-          <div className="space-y-1">
-            <div className="h-1 bg-neutral-300 rounded"></div>
-            <div className="h-1 bg-neutral-300 rounded w-4/5"></div>
-            <div className="h-1 bg-neutral-300 rounded w-3/5"></div>
+          
+          {/* Two column layout */}
+          <div className="grid grid-cols-2 gap-2 mb-2">
+            <div>
+              <div className="h-1 bg-neutral-600 rounded w-full mb-1"></div>
+              <div className="space-y-0.5">
+                <div className="h-0.5 bg-neutral-300 rounded w-full"></div>
+                <div className="h-0.5 bg-neutral-300 rounded w-4/5"></div>
+                <div className="h-0.5 bg-neutral-300 rounded w-3/5"></div>
+              </div>
+            </div>
+            <div>
+              <div className="h-1 bg-neutral-600 rounded w-3/4 mb-1"></div>
+              <div className="space-y-0.5">
+                <div className="h-0.5 bg-neutral-300 rounded w-2/3"></div>
+                <div className="h-0.5 bg-neutral-300 rounded w-1/2"></div>
+                <div className="h-0.5 bg-neutral-300 rounded w-3/4"></div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Work experience section */}
+          <div>
+            <div className="h-1 bg-neutral-600 rounded w-1/2 mb-1"></div>
+            <div className="space-y-0.5">
+              <div className="h-0.5 bg-neutral-300 rounded w-full"></div>
+              <div className="h-0.5 bg-neutral-300 rounded w-5/6"></div>
+            </div>
           </div>
         </div>
       );

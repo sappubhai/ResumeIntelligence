@@ -11,8 +11,10 @@ import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/Header";
 import FileUpload from "@/components/FileUpload";
 import LoadingModal from "@/components/LoadingModal";
+import TemplatePreview from "@/components/TemplatePreview";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { 
   CloudUpload, 
   Edit, 
@@ -28,7 +30,7 @@ import {
   MessageCircle,
   Rocket
 } from "lucide-react";
-import type { Resume } from "@shared/schema";
+import type { Resume, Template } from "@shared/schema";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
@@ -36,6 +38,8 @@ export default function Dashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showLoadingModal, setShowLoadingModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [selectedResumeForDownload, setSelectedResumeForDownload] = useState<number | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -99,8 +103,8 @@ export default function Dashboard() {
   });
 
   const downloadMutation = useMutation({
-    mutationFn: async (resumeId: number) => {
-      const response = await apiRequest("POST", `/api/resumes/${resumeId}/download`);
+    mutationFn: async ({ resumeId, templateId }: { resumeId: number; templateId: number }) => {
+      const response = await apiRequest("POST", `/api/resumes/${resumeId}/download`, JSON.stringify({ templateId }));
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -139,7 +143,19 @@ export default function Dashboard() {
   };
 
   const handleDownload = (resumeId: number) => {
-    downloadMutation.mutate(resumeId);
+    setSelectedResumeForDownload(resumeId);
+    setShowTemplateModal(true);
+  };
+
+  const handleTemplateSelect = (templateId: number) => {
+    if (selectedResumeForDownload) {
+      downloadMutation.mutate({ 
+        resumeId: selectedResumeForDownload, 
+        templateId 
+      });
+      setShowTemplateModal(false);
+      setSelectedResumeForDownload(null);
+    }
   };
 
   if (authLoading || !user) {
@@ -504,6 +520,41 @@ export default function Dashboard() {
         title="Processing Resume"
         description="AI is extracting information from your resume. This may take a few moments..."
       />
+
+      {/* Template Selection Modal */}
+      <Dialog open={showTemplateModal} onOpenChange={setShowTemplateModal}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>Choose a Template</DialogTitle>
+            <p className="text-neutral-600">Select a template for your resume download</p>
+          </DialogHeader>
+          
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-h-96 overflow-y-auto">
+            {templates.map((template: Template, index: number) => (
+              <div
+                key={template.id}
+                className="border border-neutral-200 rounded-lg p-4 hover:shadow-md hover:border-primary transition-all cursor-pointer group"
+                onClick={() => handleTemplateSelect(template.id)}
+              >
+                <TemplatePreview 
+                  template={template}
+                  colorIndex={index % 4}
+                  compact={false}
+                />
+                
+                <div className="mt-3">
+                  <h4 className="font-medium text-neutral-800 mb-1">
+                    {template.name}
+                  </h4>
+                  <p className="text-xs text-neutral-500">
+                    {template.category}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
