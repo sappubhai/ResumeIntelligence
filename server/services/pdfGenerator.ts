@@ -15,7 +15,9 @@ export async function generateResumePDF(resume: Resume, template: Template): Pro
         '--no-first-run',
         '--no-zygote',
         '--single-process',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--disable-web-security',
+        '--disable-features=VizDisplayCompositor'
       ],
       executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     });

@@ -209,7 +209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const resumeId = parseInt(req.params.id);
       const userId = req.user.id;
-      const { templateId } = req.body;
+      const { templateId } = req.body || {};
       
       // Get resume and check ownership
       const resume = await storage.getResume(resumeId);
@@ -246,7 +246,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.send(pdfBuffer);
     } catch (error) {
       console.error("Error generating PDF:", error);
-      res.status(500).json({ message: "Failed to generate PDF" });
+      if (error instanceof SyntaxError) {
+        return res.status(400).json({ message: "Invalid request body" });
+      }
+      res.status(500).json({ 
+        message: "Failed to generate PDF",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
     }
   });
 
