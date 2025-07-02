@@ -35,22 +35,21 @@ export default function Dashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
   const [showLoadingModal, setShowLoadingModal] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
       toast({
         title: "Unauthorized",
-        description: "You are logged out. Logging in again...",
+        description: "You need to log in to access this page.",
         variant: "destructive",
       });
       setTimeout(() => {
-        window.location.href = "/api/login";
+        setLocation("/auth");
       }, 500);
       return;
     }
-  }, [user, authLoading, toast]);
+  }, [user, authLoading, toast, setLocation]);
 
   const { data: resumes = [], isLoading: resumesLoading } = useQuery<Resume[]>({
     queryKey: ["/api/resumes"],
