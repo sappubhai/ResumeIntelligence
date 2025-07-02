@@ -104,7 +104,7 @@ export default function Dashboard() {
 
   const downloadMutation = useMutation({
     mutationFn: async ({ resumeId, templateId }: { resumeId: number; templateId: number }) => {
-      const response = await apiRequest("POST", `/api/resumes/${resumeId}/download`, JSON.stringify({ templateId }));
+      const response = await apiRequest("POST", `/api/resumes/${resumeId}/download`, { templateId });
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
