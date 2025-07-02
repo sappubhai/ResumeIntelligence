@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import multer from "multer";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth } from "./auth";
 import { parseResumeFile } from "./services/fileParser";
 import { generateResumePDF } from "./services/pdfGenerator";
 import { insertResumeSchema } from "@shared/schema";
@@ -29,26 +29,22 @@ const upload = multer({
   },
 });
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware
-  await setupAuth(app);
+// Simple authentication middleware
+const isAuthenticated = (req: any, res: any, next: any) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ message: "Unauthorized" });
+};
 
-  // Auth routes
-  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
-    }
-  });
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup authentication
+  setupAuth(app);
 
   // Resume routes
   app.get('/api/resumes', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const resumes = await storage.getUserResumes(userId);
       res.json(resumes);
     } catch (error) {
@@ -67,7 +63,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Check if user owns this resume
-      if (resume.userId !== req.user.claims.sub) {
+      if (resume.userId !== req.user.id) {
         return res.status(403).json({ message: "Access denied" });
       }
       
@@ -80,7 +76,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/resumes', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const resumeData = insertResumeSchema.parse({
         ...req.body,
         userId,
@@ -100,7 +96,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/resumes/:id', isAuthenticated, async (req: any, res) => {
     try {
       const resumeId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       // Check if resume exists and user owns it
       const existingResume = await storage.getResume(resumeId);
@@ -126,7 +122,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete('/api/resumes/:id', isAuthenticated, async (req: any, res) => {
     try {
       const resumeId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       // Check if resume exists and user owns it
       const existingResume = await storage.getResume(resumeId);
@@ -163,7 +159,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Create a new resume with parsed data
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       const resumeData = insertResumeSchema.parse({
         ...parsedData,
         userId,
@@ -212,7 +208,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/resumes/:id/download', isAuthenticated, async (req: any, res) => {
     try {
       const resumeId = parseInt(req.params.id);
-      const userId = req.user.claims.sub;
+      const userId = req.user.id;
       
       // Get resume and check ownership
       const resume = await storage.getResume(resumeId);
