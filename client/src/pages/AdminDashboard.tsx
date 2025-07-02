@@ -13,9 +13,12 @@ import {
   TrendingUp,
   Activity,
   BarChart3,
-  PieChart
+  PieChart,
+  UserCheck,
+  Settings
 } from "lucide-react";
 import { Link } from "wouter";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell } from 'recharts';
 
 interface DashboardStats {
   totalUsers: number;
@@ -50,8 +53,18 @@ export default function AdminDashboard() {
 
   const { data: stats, isLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/admin/dashboard"],
-    enabled: !!user && user.role === 'admin',
+    enabled: !!user && (user as any).role === 'admin',
   });
+
+  // Chart data
+  const chartData = [
+    { name: 'Users', value: parseInt(stats?.totalUsers || '0'), color: '#3b82f6' },
+    { name: 'Resumes', value: parseInt(stats?.totalResumes || '0'), color: '#10b981' },
+    { name: 'Downloads', value: parseInt(stats?.totalDownloads || '0'), color: '#f59e0b' },
+    { name: 'Templates', value: parseInt(stats?.totalTemplates || '0'), color: '#8b5cf6' },
+  ];
+
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6'];
 
   if (authLoading || !user || user.role !== 'admin') {
     return (
@@ -198,6 +211,56 @@ export default function AdminDashboard() {
               ) : (
                 <p className="text-muted-foreground text-center py-4">No recent activity</p>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Analytics Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" />
+                    <YAxis />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#3b82f6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Additional Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>System Overview</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={chartData}
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                      label={({ name, value }) => `${name}: ${value}`}
+                    >
+                      {chartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 

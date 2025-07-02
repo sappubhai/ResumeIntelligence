@@ -11,7 +11,7 @@ import {
   type InsertTemplate,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, sql } from "drizzle-orm";
 import connectPg from "connect-pg-simple";
 import session from "express-session";
 import { pool } from "./db";
@@ -168,10 +168,10 @@ export class DatabaseStorage implements IStorage {
     totalTemplates: number;
     recentActivity: any[];
   }> {
-    const [usersCount] = await db.select({ count: users.id }).from(users);
-    const [resumesCount] = await db.select({ count: resumes.id }).from(resumes);
-    const [downloadsCount] = await db.select({ count: downloads.id }).from(downloads);
-    const [templatesCount] = await db.select({ count: templates.id }).from(templates);
+    const [usersCount] = await db.select({ count: sql<number>`count(*)` }).from(users);
+    const [resumesCount] = await db.select({ count: sql<number>`count(*)` }).from(resumes);
+    const [downloadsCount] = await db.select({ count: sql<number>`count(*)` }).from(downloads);
+    const [templatesCount] = await db.select({ count: sql<number>`count(*)` }).from(templates);
     
     const recentActivity = await db
       .select({
