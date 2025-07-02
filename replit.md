@@ -20,8 +20,8 @@ ResumeBuilder Pro is a full-stack web application that helps users create profes
 - **Framework**: Express.js REST API
 - **Database**: PostgreSQL with Drizzle ORM
 - **Database Provider**: Neon Database (serverless PostgreSQL)
-- **Authentication**: Replit Auth with OpenID Connect
-- **Session Management**: PostgreSQL-backed sessions with connect-pg-simple
+- **Authentication**: Email/password authentication with Passport.js
+- **Session Management**: PostgreSQL-backed sessions with connect-pg-simple and bcrypt password hashing
 - **File Processing**: Multer for file uploads, PDF-parse and Mammoth for document parsing
 - **PDF Generation**: Puppeteer for resume PDF generation
 - **AI Integration**: OpenAI GPT-4o for intelligent resume parsing
@@ -29,10 +29,10 @@ ResumeBuilder Pro is a full-stack web application that helps users create profes
 ## Key Components
 
 ### Authentication System
-- **Provider**: Replit Auth with OIDC (OpenID Connect)
+- **Provider**: Email/password authentication with Passport.js Local Strategy
 - **Session Storage**: PostgreSQL sessions table with 1-week TTL
-- **Security**: HTTP-only secure cookies, CSRF protection
-- **User Management**: User profiles with email verification support
+- **Security**: HTTP-only secure cookies, bcrypt password hashing, CSRF protection
+- **User Management**: User registration and login with name and email fields
 
 ### File Processing Pipeline
 - **Upload Handling**: Multer with memory storage (10MB limit)
@@ -54,7 +54,7 @@ ResumeBuilder Pro is a full-stack web application that helps users create profes
 
 ## Data Flow
 
-1. **User Authentication**: Replit Auth handles login/logout with OIDC
+1. **User Authentication**: Email/password authentication with secure sessions
 2. **File Upload**: Users upload existing resumes via drag-and-drop interface
 3. **AI Processing**: OpenAI parses uploaded documents into structured data
 4. **Data Storage**: Parsed resume data stored in PostgreSQL with Drizzle ORM
@@ -106,6 +106,7 @@ ResumeBuilder Pro is a full-stack web application that helps users create profes
 
 Changelog:
 - July 01, 2025. Initial setup
+- July 02, 2025. Migrated from Replit Auth to email/password authentication with Passport.js
 
 ## User Preferences
 
