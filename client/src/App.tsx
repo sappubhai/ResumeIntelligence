@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/lib/protected-route";
 import Landing from "@/pages/Landing";
 import Dashboard from "@/pages/Dashboard";
 import ResumeBuilder from "@/pages/ResumeBuilder";
+import ResumePreview from "@/pages/ResumePreview";
 import TemplateSelector from "@/pages/TemplateSelector";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
@@ -20,6 +21,7 @@ function Router() {
       <ProtectedRoute path="/dashboard" component={Dashboard} />
       <ProtectedRoute path="/builder/:resumeId?" component={ResumeBuilder} />
       <ProtectedRoute path="/templates" component={TemplateSelector} />
+      <ProtectedRoute path="/preview/:resumeId" component={ResumePreview} />
       <Route component={NotFound} />
     </Switch>
   );

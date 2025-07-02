@@ -4,7 +4,7 @@ import multer from "multer";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
 import { parseResumeFile } from "./services/fileParser";
-import { generateResumePDF } from "./services/pdfGenerator";
+import { generateResumePDF, generateResumeHTML } from "./services/pdfGenerator";
 import { insertResumeSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -205,6 +205,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // PDF generation
+  // Preview resume as HTML
+  app.get("/api/resumes/:id/preview", isAuthenticated, async (req: any, res) => {
+    try {
+      const resumeId = parseInt(req.params.id);
+      const userId = req.user.id;
+      const templateId = req.query.templateId ? parseInt(req.query.templateId as string) : undefined;
+      
+      if (isNaN(resumeId)) {
+        return res.status(400).json({ message: "Invalid resume ID" });
+      }
+      
+      const resume = await storage.getResume(resumeId);
+      if (!resume) {
+        return res.status(404).json({ message: "Resume not found" });
+      }
+      if (resume.userId !== userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+      
+      let template;
+      if (templateId) {
+        template = await storage.getTemplate(templateId);
+      } else if (resume.templateId) {
+        template = await storage.getTemplate(resume.templateId);
+      }
+      
+      if (!template) {
+        // Use a default template if none specified
+        const templates = await storage.getTemplates();
+        template = templates[0];
+      }
+      
+      if (!template) {
+        return res.status(400).json({ message: "No template available" });
+      }
+      
+      // Generate HTML preview
+      const htmlContent = await generateResumeHTML(resume, template);
+      
+      res.setHeader('Content-Type', 'text/html');
+      res.send(htmlContent);
+    } catch (error) {
+      console.error("Error generating HTML preview:", error);
+      res.status(500).json({ 
+        message: "Failed to generate preview",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
   app.post('/api/resumes/:id/download', isAuthenticated, async (req: any, res) => {
     try {
       const resumeId = parseInt(req.params.id);

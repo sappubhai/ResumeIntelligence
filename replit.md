@@ -107,6 +107,12 @@ ResumeBuilder Pro is a full-stack web application that helps users create profes
 Changelog:
 - July 01, 2025. Initial setup
 - July 02, 2025. Migrated from Replit Auth to email/password authentication with Passport.js
+- July 02, 2025. Successfully migrated project to Replit environment with PDF preview system
+  - Fixed Puppeteer PDF generation with system Chromium integration
+  - Added PDF preview functionality with iframe-based HTML preview
+  - Implemented new route `/preview/:resumeId` for PDF preview before download
+  - Updated Dashboard to redirect to preview instead of direct download
+  - Enhanced user experience with live preview and download button
 
 ## User Preferences
 

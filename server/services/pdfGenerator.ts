@@ -1,6 +1,10 @@
 import puppeteer from 'puppeteer';
 import type { Resume, Template } from '@shared/schema';
 
+export async function generateResumeHTML(resume: Resume, template: Template): Promise<string> {
+  return generateHTMLFromTemplate(resume, template);
+}
+
 export async function generateResumePDF(resume: Resume, template: Template): Promise<Buffer> {
   let browser;
   
@@ -22,7 +26,7 @@ export async function generateResumePDF(resume: Resume, template: Template): Pro
         '--disable-backgrounding-occluded-windows',
         '--disable-renderer-backgrounding'
       ],
-      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
+      executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || '/nix/store/zi4f80l169xlmivz8vja8wlphq74qqk0-chromium-125.0.6422.141/bin/chromium',
     });
     
     const page = await browser.newPage();
@@ -43,7 +47,7 @@ export async function generateResumePDF(resume: Resume, template: Template): Pro
       },
     });
     
-    return pdfBuffer;
+    return Buffer.from(pdfBuffer);
   } catch (error) {
     console.error('Error generating PDF:', error);
     throw new Error('Failed to generate PDF');

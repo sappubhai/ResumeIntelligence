@@ -149,10 +149,7 @@ export default function Dashboard() {
 
   const handleTemplateSelect = (templateId: number) => {
     if (selectedResumeForDownload) {
-      downloadMutation.mutate({ 
-        resumeId: selectedResumeForDownload, 
-        templateId 
-      });
+      setLocation(`/preview/${selectedResumeForDownload}?template=${templateId}`);
       setShowTemplateModal(false);
       setSelectedResumeForDownload(null);
     }
@@ -177,7 +174,7 @@ export default function Dashboard() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-3xl font-bold mb-2">
-                Welcome back, {user.firstName || 'there'}!
+                Welcome back, {user.name || 'there'}!
               </h2>
               <p className="text-blue-100 text-lg">
                 Ready to build your professional resume? Choose an option below to get started.
@@ -537,7 +534,12 @@ export default function Dashboard() {
                 onClick={() => handleTemplateSelect(template.id)}
               >
                 <TemplatePreview 
-                  template={template}
+                  template={{
+                    id: template.id,
+                    name: template.name,
+                    description: template.description || undefined,
+                    category: template.category
+                  }}
                   colorIndex={index % 4}
                   compact={false}
                 />
