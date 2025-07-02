@@ -63,6 +63,7 @@ export const resumes = pgTable("resumes", {
   dateOfBirth: date("date_of_birth"),
   address: text("address"),
   linkedinId: varchar("linkedin_id"),
+  photoUrl: varchar("photo_url"), // Added photo field
   
   // Professional Summary
   summary: text("summary"),

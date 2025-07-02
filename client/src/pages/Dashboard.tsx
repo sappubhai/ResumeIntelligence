@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
+// Utility function for auth errors
+const isUnauthorizedError = (error: Error): boolean => {
+  return error.message.includes('401') || error.message.includes('Unauthorized');
+};
 import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/Header";
 import FileUpload from "@/components/FileUpload";
@@ -48,12 +51,12 @@ export default function Dashboard() {
     }
   }, [user, authLoading, toast]);
 
-  const { data: resumes = [], isLoading: resumesLoading } = useQuery({
+  const { data: resumes = [], isLoading: resumesLoading } = useQuery<Resume[]>({
     queryKey: ["/api/resumes"],
     enabled: !!user,
   });
 
-  const { data: templates = [] } = useQuery({
+  const { data: templates = [] } = useQuery<Template[]>({
     queryKey: ["/api/templates"],
   });
 

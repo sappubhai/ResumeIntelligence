@@ -16,24 +16,23 @@ interface LoadingModalProps {
 export default function LoadingModal({ 
   isOpen, 
   title = "Processing...", 
-  description = "Please wait while we process your request." 
+  description = "Please wait while we process your request."
 }: LoadingModalProps) {
   return (
     <Dialog open={isOpen}>
-      <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()}>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <div className="flex flex-col items-center space-y-4">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <div className="text-center space-y-2">
-              <DialogTitle className="text-lg font-semibold text-neutral-800">
-                {title}
-              </DialogTitle>
-              <DialogDescription className="text-neutral-600">
-                {description}
-              </DialogDescription>
-            </div>
-          </div>
+          <DialogTitle className="flex items-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {title}
+          </DialogTitle>
+          <DialogDescription>
+            {description}
+          </DialogDescription>
         </DialogHeader>
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
       </DialogContent>
     </Dialog>
   );
