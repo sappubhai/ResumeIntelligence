@@ -44,6 +44,7 @@ const resumeFormSchema = z.object({
   dateOfBirth: z.string().optional(),
   address: z.string().optional(),
   linkedinId: z.string().optional(),
+  photoUrl: z.string().optional(),
   summary: z.string().optional(),
   workExperience: z.array(z.object({
     id: z.string(),
@@ -225,6 +226,7 @@ export default function ResumeForm({
           dateOfBirth: resumeData.dateOfBirth || "",
           address: resumeData.address || "",
           linkedinId: resumeData.linkedinId || "",
+          photoUrl: resumeData.photoUrl || "",
           summary: resumeData.summary || "",
           workExperience: (resumeData.workExperience as any[]) || [],
           education: (resumeData.education as any[]) || [],
@@ -475,6 +477,20 @@ export default function ResumeForm({
                         <FormLabel>LinkedIn Profile</FormLabel>
                         <FormControl>
                           <Input placeholder="linkedin.com/in/johndoe" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="photoUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Photo URL</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://example.com/photo.jpg" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

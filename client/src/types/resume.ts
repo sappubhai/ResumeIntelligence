@@ -75,6 +75,7 @@ export interface ResumeFormData {
   dateOfBirth?: string;
   address?: string;
   linkedinId?: string;
+  photoUrl?: string;
   summary?: string;
   workExperience: WorkExperience[];
   education: Education[];
