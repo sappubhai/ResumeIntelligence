@@ -214,7 +214,7 @@ export default function ResumeForm({
       console.log("Form reset with initialData:", initialData);
       // Handle case where initialData might be an array or object
       const resumeData = Array.isArray(initialData) ? initialData[0] : initialData;
-      
+
       if (resumeData) {
         const resetData = {
           title: resumeData.title || "My Resume",

@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 
 interface TemplatePreviewProps {
   template: {
@@ -73,7 +74,7 @@ export default function TemplatePreview({
   // Template-specific layouts based on name or category
   const renderTemplateLayout = () => {
     const templateName = template.name.toLowerCase();
-    
+
     if (templateName.includes('modern') || templateName.includes('professional')) {
       return (
         <div className="bg-white rounded shadow-sm p-2 mb-2 text-xs">
@@ -86,7 +87,7 @@ export default function TemplatePreview({
               <span>Mumbai, IN</span>
             </div>
           </div>
-          
+
           {/* Two column layout */}
           <div className="grid grid-cols-2 gap-2 mb-2">
             <div>
@@ -106,7 +107,7 @@ export default function TemplatePreview({
               </div>
             </div>
           </div>
-          
+
           {/* Work experience section */}
           <div>
             <div className="h-1 bg-neutral-600 rounded w-1/2 mb-1"></div>
@@ -118,7 +119,7 @@ export default function TemplatePreview({
         </div>
       );
     }
-    
+
     if (templateName.includes('executive') || templateName.includes('classic')) {
       return (
         <div className="bg-white rounded shadow-sm p-3 mb-3">
@@ -134,7 +135,7 @@ export default function TemplatePreview({
         </div>
       );
     }
-    
+
     if (templateName.includes('creative') || templateName.includes('portfolio')) {
       return (
         <div className="bg-white rounded shadow-sm p-3 mb-3">
@@ -151,7 +152,7 @@ export default function TemplatePreview({
         </div>
       );
     }
-    
+
     if (templateName.includes('minimalist') || templateName.includes('simple')) {
       return (
         <div className="bg-white rounded shadow-sm p-3 mb-3">
@@ -169,7 +170,7 @@ export default function TemplatePreview({
         </div>
       );
     }
-    
+
     // Default layout
     return (
       <div className="bg-white rounded shadow-sm p-3 mb-3">
