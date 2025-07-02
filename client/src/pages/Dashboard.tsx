@@ -31,6 +31,7 @@ import {
 import type { Resume } from "@shared/schema";
 
 export default function Dashboard() {
+  const [, setLocation] = useLocation();
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -86,7 +87,7 @@ export default function Dashboard() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -119,7 +120,7 @@ export default function Dashboard() {
           variant: "destructive",
         });
         setTimeout(() => {
-          window.location.href = "/api/login";
+          setLocation("/auth");
         }, 500);
         return;
       }
@@ -154,7 +155,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-neutral-50">
       <Header />
-      
+
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Banner */}
         <div className="bg-gradient-to-r from-primary to-accent rounded-xl p-8 mb-8 text-white">
@@ -189,7 +190,7 @@ export default function Dashboard() {
                   <p className="text-neutral-600 mb-4">
                     Upload your Word or PDF resume and let AI extract and format your information automatically.
                   </p>
-                  
+
                   <FileUpload onFileUpload={handleFileUpload} />
                 </div>
               </div>
@@ -210,7 +211,7 @@ export default function Dashboard() {
                   <p className="text-neutral-600 mb-4">
                     Start fresh and build your resume step by step with our guided form builder.
                   </p>
-                  
+
                   <div className="space-y-3 mb-6">
                     <div className="flex items-center space-x-3 text-sm text-neutral-600">
                       <CheckCircle className="text-secondary w-4 h-4" />
@@ -225,7 +226,7 @@ export default function Dashboard() {
                       <span>Skills & Certifications</span>
                     </div>
                   </div>
-                  
+
                   <Link href="/builder">
                     <Button className="w-full bg-secondary hover:bg-green-700">
                       <Plus className="mr-2 w-4 h-4" />
@@ -248,7 +249,7 @@ export default function Dashboard() {
               </span>
             </div>
           </div>
-          
+
           <CardContent className="p-6">
             {resumesLoading ? (
               <div className="text-center py-8">
@@ -298,14 +299,14 @@ export default function Dashboard() {
                         </Button>
                       </div>
                     </div>
-                    
+
                     <h4 className="font-medium text-neutral-800 mb-1">
                       {resume.title}
                     </h4>
                     <p className="text-sm text-neutral-500 mb-3">
                       Last modified {new Date(resume.updatedAt!).toLocaleDateString()}
                     </p>
-                    
+
                     <div className="flex space-x-2">
                       <Link href={`/builder/${resume.id}`} className="flex-1">
                         <Button className="w-full" size="sm">
@@ -346,7 +347,7 @@ export default function Dashboard() {
                   </Link>
                 </div>
               </div>
-              
+
               <CardContent className="p-6">
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                   {templates.slice(0, 4).map((template: any, index: number) => (
@@ -375,10 +376,10 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </div>
-                      
+
                       <h4 className="font-medium text-neutral-800 mb-1">{template.name}</h4>
                       <p className="text-sm text-neutral-500 mb-3">{template.description}</p>
-                      
+
                       <Button 
                         className="w-full bg-neutral-100 hover:bg-primary hover:text-white text-neutral-700 group-hover:bg-primary group-hover:text-white transition-all"
                         size="sm"
@@ -399,7 +400,7 @@ export default function Dashboard() {
               <div className="p-6 border-b border-neutral-200">
                 <h3 className="text-lg font-semibold text-neutral-800">Resume Tips</h3>
               </div>
-              
+
               <CardContent className="p-6 space-y-4">
                 <div className="flex items-start space-x-4 p-4 bg-blue-50 rounded-lg">
                   <div className="bg-primary/10 rounded-lg p-2 flex-shrink-0">
@@ -410,7 +411,7 @@ export default function Dashboard() {
                     <p className="text-sm text-neutral-600">Use relevant keywords from job descriptions.</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-4 p-4 bg-green-50 rounded-lg">
                   <div className="bg-secondary/10 rounded-lg p-2 flex-shrink-0">
                     <TrendingUp className="text-secondary w-4 h-4" />
@@ -420,7 +421,7 @@ export default function Dashboard() {
                     <p className="text-sm text-neutral-600">Include numbers and specific results.</p>
                   </div>
                 </div>
-                
+
                 <div className="flex items-start space-x-4 p-4 bg-purple-50 rounded-lg">
                   <div className="bg-accent/10 rounded-lg p-2 flex-shrink-0">
                     <Target className="text-accent w-4 h-4" />
@@ -438,7 +439,7 @@ export default function Dashboard() {
               <div className="p-6 border-b border-neutral-200">
                 <h3 className="text-lg font-semibold text-neutral-800">Your Progress</h3>
               </div>
-              
+
               <CardContent className="p-6">
                 <div className="space-y-4">
                   <div>
@@ -455,7 +456,7 @@ export default function Dashboard() {
                       ></div>
                     </div>
                   </div>
-                  
+
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-primary">{resumes.length}</div>
@@ -475,19 +476,19 @@ export default function Dashboard() {
               <div className="p-6 border-b border-neutral-200">
                 <h3 className="text-lg font-semibold text-neutral-800">Quick Links</h3>
               </div>
-              
+
               <CardContent className="p-6">
                 <div className="space-y-3">
                   <Button variant="ghost" className="w-full justify-start p-3">
                     <Settings className="w-4 h-4 mr-3" />
                     Account Settings
                   </Button>
-                  
+
                   <Button variant="ghost" className="w-full justify-start p-3">
                     <HelpCircle className="w-4 h-4 mr-3" />
                     Help & Support
                   </Button>
-                  
+
                   <Button variant="ghost" className="w-full justify-start p-3">
                     <MessageCircle className="w-4 h-4 mr-3" />
                     Send Feedback
