@@ -9,7 +9,7 @@ export async function initializeAdminUser() {
     const existingAdmin = await db
       .select()
       .from(users)
-      .where(eq(users.email, "admin@admin.com"))
+      .where(eq(users.email, "admin"))
       .limit(1);
 
     if (existingAdmin.length === 0) {
@@ -17,7 +17,7 @@ export async function initializeAdminUser() {
       const hashedPassword = await bcrypt.hash("admin", 10);
       
       await db.insert(users).values({
-        email: "admin@admin.com",
+        email: "admin",
         password: hashedPassword,
         name: "Administrator",
         role: "admin",
@@ -25,7 +25,7 @@ export async function initializeAdminUser() {
       });
 
       console.log("✅ Default admin user created:");
-      console.log("   Email: admin@admin.com");
+      console.log("   Email: admin");
       console.log("   Password: admin");
     } else {
       console.log("ℹ️  Admin user already exists");
