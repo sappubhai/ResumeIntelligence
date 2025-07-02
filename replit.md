@@ -2,7 +2,7 @@
 
 ## Overview
 
-ResumeBuilder Pro is a full-stack web application that helps users create professional resumes using AI-powered parsing and multiple templates. The application has been migrated to a PHP/React/MySQL architecture for shared hosting compatibility while maintaining all original functionality.
+ResumeBuilder Pro is a full-stack web application that helps users create professional resumes using AI-powered parsing and multiple templates. The application allows users to upload existing resumes for AI parsing or build from scratch, select from professional templates, and download polished PDFs instantly.
 
 ## System Architecture
 
@@ -10,44 +10,47 @@ ResumeBuilder Pro is a full-stack web application that helps users create profes
 - **Framework**: React 18 with TypeScript
 - **Routing**: Wouter for client-side routing
 - **State Management**: TanStack Query for server state management
-- **UI Components**: Tailwind CSS for styling and responsive design
+- **UI Components**: Radix UI primitives with shadcn/ui component library
+- **Styling**: Tailwind CSS with CSS variables for theming
+- **Form Handling**: React Hook Form with Zod validation
 - **Build Tool**: Vite for development and production builds
-- **Deployment**: Static build served from shared hosting
 
 ### Backend Architecture
-- **Runtime**: PHP 8+ for shared hosting compatibility
-- **API**: RESTful API with custom PHP router
-- **Database**: MySQL with JSON columns for complex data structures
-- **Authentication**: PHP sessions with bcrypt password hashing
-- **File Processing**: Native PHP file handling with shell utilities fallback
-- **PDF Generation**: wkhtmltopdf with TCPDF fallback for resume generation
-- **AI Integration**: OpenAI GPT-4o for intelligent resume parsing via cURL
+- **Runtime**: Node.js with TypeScript
+- **Framework**: Express.js REST API
+- **Database**: PostgreSQL with Drizzle ORM
+- **Database Provider**: Neon Database (serverless PostgreSQL)
+- **Authentication**: Email/password authentication with Passport.js
+- **Session Management**: PostgreSQL-backed sessions with connect-pg-simple and bcrypt password hashing
+- **File Processing**: Multer for file uploads, PDF-parse and Mammoth for document parsing
+- **PDF Generation**: Puppeteer for resume PDF generation
+- **AI Integration**: OpenAI GPT-4o for intelligent resume parsing
 
 ## Key Components
 
 ### Authentication System
-- **Provider**: PHP native sessions with email/password authentication
-- **Session Storage**: PHP sessions with configurable storage backend
-- **Security**: Bcrypt password hashing, session security, input validation
-- **User Management**: User registration and login with MySQL user storage
+- **Provider**: Email/password authentication with Passport.js Local Strategy
+- **Session Storage**: PostgreSQL sessions table with 1-week TTL
+- **Security**: HTTP-only secure cookies, bcrypt password hashing, CSRF protection
+- **User Management**: User registration and login with name and email fields
 
 ### File Processing Pipeline
-- **Upload Handling**: PHP native file upload handling (10MB limit)
+- **Upload Handling**: Multer with memory storage (10MB limit)
 - **Supported Formats**: PDF, DOC, DOCX
-- **AI Parsing**: OpenAI GPT-4o extracts structured data via cURL requests
-- **Text Extraction**: Shell utilities (pdftotext, antiword, pandoc) with PHP fallbacks
+- **AI Parsing**: OpenAI GPT-4o extracts structured data from resume text
+- **Validation**: Zod schemas ensure data integrity
 
 ### Template System
-- **Template Storage**: HTML/CSS templates stored in MySQL database
+- **Template Storage**: HTML templates with CSS styling in database
 - **Categories**: Professional, creative, academic, and industry-specific templates
-- **Customization**: Server-side template rendering with data replacement
-- **Preview**: Template metadata for frontend preview display
+- **Customization**: Template placeholders replaced with user data
+- **Preview**: Live template previews with user data
 
 ### PDF Generation
-- **Engine**: wkhtmltopdf for high-quality PDF rendering with TCPDF fallback
+- **Engine**: Puppeteer for high-quality PDF rendering
 - **Styling**: Template CSS preserved in PDF output
 - **Format**: A4 format with professional margins
-- **Performance**: Server-side rendering optimized for shared hosting
+- **Performance**: Headless Chrome rendering for consistent output
 
 ## Data Flow
 
@@ -62,55 +65,48 @@ ResumeBuilder Pro is a full-stack web application that helps users create profes
 ## External Dependencies
 
 ### Core Services
-- **MySQL Database**: Relational database for data persistence (shared hosting compatible)
+- **Neon Database**: Serverless PostgreSQL for data persistence
 - **OpenAI API**: GPT-4o model for intelligent resume parsing
-- **Shared Hosting**: Standard LAMP stack hosting environment
+- **Replit Auth**: Authentication and user management service
 
 ### Development Tools
-- **Vite**: Frontend build tool with HMR and optimization for React
-- **Local Development**: Replit environment for development and testing
-- **Production**: Standard shared hosting with PHP and MySQL
+- **Replit Environment**: Development and deployment platform
+- **Vite**: Frontend build tool with HMR and optimization
+- **ESBuild**: Backend bundling for production deployment
 
 ### Libraries & Packages
-- **Frontend**: React, TanStack Query, Wouter, Tailwind CSS
-- **Backend**: Native PHP with PDO, cURL for API requests
-- **File Processing**: Shell utilities (pdftotext, antiword, pandoc) with PHP fallbacks
-- **PDF Generation**: wkhtmltopdf with TCPDF fallback option
-- **Database**: MySQL with JSON column support for complex data structures
+- **Database**: Drizzle ORM, @neondatabase/serverless
+- **UI**: Radix UI primitives, Tailwind CSS, Lucide icons
+- **File Processing**: pdf-parse, mammoth, multer
+- **PDF Generation**: puppeteer
+- **Validation**: Zod schemas for type-safe data validation
 
 ## Deployment Strategy
 
 ### Development
-- **Environment**: Replit development environment with original Node.js stack
-- **Database**: PostgreSQL for development and testing
-- **Build**: Vite dev server for frontend development
-- **Testing**: Full-stack testing in Replit environment
+- **Environment**: Replit development environment with live reload
+- **Database**: Neon database with development connection string
+- **Build**: Vite dev server for frontend, tsx for backend hot reload
+- **Debugging**: Runtime error overlay and source maps enabled
 
-### Production (Shared Hosting)
-- **Frontend**: Vite build output served as static files
-- **Backend**: PHP files deployed to shared hosting server
-- **Database**: MySQL database with imported schema
-- **Environment Variables**: DB_HOST, DB_NAME, DB_USER, DB_PASS, OPENAI_API_KEY, SESSION_SECRET
-- **Web Server**: Apache with .htaccess URL rewriting
+### Production
+- **Frontend**: Static build served from Express
+- **Backend**: ESBuild bundle with external packages
+- **Database**: Production Neon database instance
+- **Environment Variables**: DATABASE_URL, OPENAI_API_KEY, SESSION_SECRET
+- **Process Management**: Single Node.js process serving both frontend and API
 
 ### Environment Configuration
-- **Development**: Original Node.js/Express stack in Replit
-- **Build Frontend**: `cd frontend && npm run build`
-- **Deploy Backend**: Upload PHP files to shared hosting
-- **Database Setup**: Import `backend/config/schema.sql` to MySQL
-- **Configuration**: Create `.env` file with production credentials
+- **Development**: `NODE_ENV=development tsx server/index.ts`
+- **Build**: `vite build && esbuild server/index.ts --bundle`
+- **Production**: `NODE_ENV=production node dist/index.js`
+- **Database**: `drizzle-kit push` for schema migrations
 
 ## Changelog
 
-- July 01, 2025: Initial setup with Node.js/Express/PostgreSQL
-- July 02, 2025: Migrated from Replit Auth to email/password authentication with Passport.js
-- July 02, 2025: **Major Architecture Migration** - Converted entire application from Node.js/Express/PostgreSQL to PHP/React/MySQL for shared hosting compatibility:
-  - Created complete PHP backend with MVC architecture
-  - Maintained all original functionality (authentication, file upload, AI parsing, PDF generation)
-  - Restructured frontend as standalone React application
-  - Added MySQL database schema with JSON columns
-  - Created deployment documentation for shared hosting
-  - Preserved user experience and feature parity
+Changelog:
+- July 01, 2025. Initial setup
+- July 02, 2025. Migrated from Replit Auth to email/password authentication with Passport.js
 
 ## User Preferences
 
