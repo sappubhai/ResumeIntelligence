@@ -92,7 +92,9 @@ export default function AdminUsers() {
   );
 
   const handleUpdateUser = (id: number, updates: Partial<User>) => {
-    updateUserMutation.mutate({ id, updates });
+    // Only send updatable fields, exclude timestamps and id
+    const { id: _, createdAt, updatedAt, ...updatableFields } = updates;
+    updateUserMutation.mutate({ id, updates: updatableFields });
   };
 
   const handleDeleteUser = (id: number) => {
@@ -282,7 +284,12 @@ export default function AdminUsers() {
                     Cancel
                   </Button>
                   <Button 
-                    onClick={() => handleUpdateUser(editingUser.id, editingUser)}
+                    onClick={() => handleUpdateUser(editingUser.id, {
+                      name: editingUser.name,
+                      email: editingUser.email,
+                      role: editingUser.role,
+                      isActive: editingUser.isActive
+                    })}
                     disabled={updateUserMutation.isPending}
                   >
                     {updateUserMutation.isPending ? "Saving..." : "Save Changes"}
