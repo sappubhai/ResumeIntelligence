@@ -102,9 +102,18 @@ export function setupAuth(app: Express) {
     }
   });
 
-  app.post("/api/login", passport.authenticate("local"), (req, res) => {
-    const user = req.user!;
-    res.status(200).json({ id: user.id, email: user.email, name: user.name });
+  app.post("/api/login", (req, res, next) => {
+    passport.authenticate("local", (err, user, info) => {
+      if (err) return next(err);
+      if (!user) {
+        return res.status(401).json({ message: "Invalid email or password" });
+      }
+      
+      req.login(user, (err) => {
+        if (err) return next(err);
+        res.status(200).json({ id: user.id, email: user.email, name: user.name });
+      });
+    })(req, res, next);
   });
 
   app.post("/api/logout", (req, res, next) => {
