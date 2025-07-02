@@ -1,14 +1,23 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Shield, Zap, Download, Users, Star } from "lucide-react";
-
+import { FileText, Shield, Zap, Download, Users, Star, User, LogOut } from "lucide-react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function Landing() {
   const [, setLocation] = useLocation();
+  const { user, logoutMutation } = useAuth();
   
   const handleLogin = () => {
     setLocation("/auth");
+  };
+
+  const handleDashboard = () => {
+    setLocation("/dashboard");
+  };
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
   };
 
   return (
@@ -22,9 +31,24 @@ export default function Landing() {
               <h1 className="text-xl font-bold text-neutral-800">ResumeBuilder Pro</h1>
             </div>
             
-            <Button onClick={handleLogin} className="bg-primary hover:bg-blue-700">
-              Sign In
-            </Button>
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2">
+                  <User className="h-4 w-4" />
+                  <span className="text-sm font-medium">{user.name}</span>
+                </div>
+                <Button onClick={handleDashboard} variant="outline">
+                  Dashboard
+                </Button>
+                <Button onClick={handleLogout} variant="ghost" size="sm">
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={handleLogin} className="bg-primary hover:bg-blue-700">
+                Sign In
+              </Button>
+            )}
           </div>
         </div>
       </header>
