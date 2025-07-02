@@ -31,8 +31,19 @@ export const users = pgTable("users", {
   email: varchar("email").unique().notNull(),
   password: varchar("password").notNull(),
   name: varchar("name").notNull(),
+  role: varchar("role").default("user"),
+  isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Download statistics
+export const downloads = pgTable("downloads", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  resumeId: integer("resume_id").notNull().references(() => resumes.id),
+  templateId: integer("template_id").notNull().references(() => templates.id),
+  downloadedAt: timestamp("downloaded_at").defaultNow(),
 });
 
 // Resume templates
@@ -193,3 +204,4 @@ export type InsertResume = z.infer<typeof insertResumeSchema>;
 export type Resume = typeof resumes.$inferSelect;
 export type Template = typeof templates.$inferSelect;
 export type InsertTemplate = z.infer<typeof insertTemplateSchema>;
+export type Download = typeof downloads.$inferSelect;

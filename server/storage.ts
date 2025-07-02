@@ -2,9 +2,11 @@ import {
   users,
   resumes,
   templates,
+  downloads,
   type User,
   type Resume,
   type Template,
+  type Download,
   type InsertResume,
   type InsertTemplate,
 } from "@shared/schema";
@@ -34,6 +36,20 @@ export interface IStorage {
   getTemplates(): Promise<Template[]>;
   getTemplate(id: number): Promise<Template | undefined>;
   createTemplate(template: InsertTemplate): Promise<Template>;
+  
+  // Admin operations
+  getAllUsers(): Promise<User[]>;
+  updateUser(id: number, updates: Partial<User>): Promise<User>;
+  deleteUser(id: number): Promise<void>;
+  getAllResumes(): Promise<Resume[]>;
+  getDashboardStats(): Promise<{
+    totalUsers: number;
+    totalResumes: number;
+    totalDownloads: number;
+    totalTemplates: number;
+    recentActivity: any[];
+  }>;
+  trackDownload(userId: number, resumeId: number, templateId: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -43,8 +59,8 @@ export class DatabaseStorage implements IStorage {
     const PostgresSessionStore = connectPg(session);
     this.sessionStore = new PostgresSessionStore({
       pool,
-      tableName: 'session',
-      createTableIfMissing: false
+      tableName: 'sessions',
+      createTableIfMissing: true
     });
   }
 
@@ -121,6 +137,68 @@ export class DatabaseStorage implements IStorage {
       .values(template)
       .returning();
     return newTemplate;
+  }
+
+  // Admin operations
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(desc(users.createdAt));
+  }
+
+  async updateUser(id: number, updates: Partial<User>): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser;
+  }
+
+  async deleteUser(id: number): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
+  }
+
+  async getAllResumes(): Promise<Resume[]> {
+    return await db.select().from(resumes).orderBy(desc(resumes.createdAt));
+  }
+
+  async getDashboardStats(): Promise<{
+    totalUsers: number;
+    totalResumes: number;
+    totalDownloads: number;
+    totalTemplates: number;
+    recentActivity: any[];
+  }> {
+    const [usersCount] = await db.select({ count: users.id }).from(users);
+    const [resumesCount] = await db.select({ count: resumes.id }).from(resumes);
+    const [downloadsCount] = await db.select({ count: downloads.id }).from(downloads);
+    const [templatesCount] = await db.select({ count: templates.id }).from(templates);
+    
+    const recentActivity = await db
+      .select({
+        type: downloads.id,
+        userId: downloads.userId,
+        resumeId: downloads.resumeId,
+        createdAt: downloads.downloadedAt
+      })
+      .from(downloads)
+      .orderBy(desc(downloads.downloadedAt))
+      .limit(10);
+
+    return {
+      totalUsers: usersCount.count,
+      totalResumes: resumesCount.count,
+      totalDownloads: downloadsCount.count,
+      totalTemplates: templatesCount.count,
+      recentActivity
+    };
+  }
+
+  async trackDownload(userId: number, resumeId: number, templateId: number): Promise<void> {
+    await db.insert(downloads).values({
+      userId,
+      resumeId,
+      templateId
+    });
   }
 }
 
