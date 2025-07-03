@@ -85,7 +85,7 @@ const comprehensiveResumeSchema = z.object({
     status: z.enum(['Completed', 'Pursuing']).default('Completed'),
     scoreType: z.enum(['Percentage', 'CGPA']).default('Percentage'),
     score: z.string().optional(),
-    division: z.enum(['I', 'II', 'III']).optional(),
+    division: z.enum(['I', 'II', 'III']).optional().or(z.literal('')),
     country: z.string().optional(),
     state: z.string().optional(),
     city: z.string().optional(),
@@ -158,13 +158,13 @@ const comprehensiveResumeSchema = z.object({
   
   // 13. Personal Information
   personalInfo: z.object({
-    photo: z.string().optional(),
+    photo: z.string().optional().nullable(),
     birthdate: z.string().optional(),
-    gender: z.enum(['Male', 'Female', 'Other']).optional(),
-    maritalStatus: z.enum(['Single', 'Married', 'Other']).optional(),
-    passportNumber: z.string().optional(),
-    nationality: z.string().optional(),
-    additionalDetails: z.string().optional(),
+    gender: z.enum(['Male', 'Female', 'Other']).optional().nullable(),
+    maritalStatus: z.enum(['Single', 'Married', 'Other']).optional().nullable(),
+    passportNumber: z.string().optional().nullable(),
+    nationality: z.string().optional().nullable(),
+    additionalDetails: z.string().optional().nullable(),
   }).optional(),
   
   // 14. Personal Interests
@@ -478,14 +478,20 @@ export default function AccordionResumeForm({
           Changes you save here will reflect on all templates for this resume.
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => {
+              if (window.location.pathname.includes('/builder/')) {
+                const resumeId = window.location.pathname.split('/').pop();
+                window.open(`/preview/${resumeId}`, '_blank');
+              }
+            }}
+          >
             Resume Preview
           </Button>
           <Button variant="default" size="sm" className="bg-teal-600 hover:bg-teal-700">
             Update Info
-          </Button>
-          <Button variant="outline" size="sm">
-            Download
           </Button>
         </div>
       </div>

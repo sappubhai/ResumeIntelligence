@@ -163,7 +163,12 @@ export default function ResumeBuilder() {
       });
       return;
     }
-    downloadMutation.mutate();
+    
+    // For now, use template ID 1. Later we can add template selection dialog
+    const selectedTemplateId = 1;
+    
+    // Navigate to preview with template selection
+    setLocation(`/preview/${resumeId}?templateId=${selectedTemplateId}`);
   };
 
   const handleGoBack = () => {
@@ -175,12 +180,11 @@ export default function ResumeBuilder() {
   };
 
   const handleTopSave = () => {
-    // Show toast to use the bottom save button for now
-    toast({
-      title: "Use Bottom Save Button",
-      description: "Please use the 'Save Resume' button at the bottom of the form to save your changes.",
-      variant: "default",
-    });
+    // Trigger form submission by programmatically clicking the bottom save button
+    const saveButton = document.querySelector('button[type="submit"]') as HTMLButtonElement;
+    if (saveButton) {
+      saveButton.click();
+    }
   };
 
   if (authLoading || !user) {
