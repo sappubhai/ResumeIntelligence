@@ -28,7 +28,8 @@ import {
   Settings,
   HelpCircle,
   MessageCircle,
-  Rocket
+  Rocket,
+  Trash2
 } from "lucide-react";
 import type { Resume, Template } from "@shared/schema";
 
@@ -135,6 +136,37 @@ export default function Dashboard() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async (resumeId: number) => {
+      await apiRequest("DELETE", `/api/resumes/${resumeId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/resumes"] });
+      toast({
+        title: "Resume Deleted",
+        description: "Your resume has been deleted successfully.",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          setLocation("/auth");
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Delete Failed",
+        description: "Failed to delete resume",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleFileUpload = (file: File) => {
     const formData = new FormData();
     formData.append('resume', file);
@@ -145,6 +177,12 @@ export default function Dashboard() {
   const handleDownload = (resumeId: number) => {
     setSelectedResumeForDownload(resumeId);
     setShowTemplateModal(true);
+  };
+
+  const handleDelete = (resumeId: number) => {
+    if (confirm("Are you sure you want to delete this resume? This action cannot be undone.")) {
+      deleteMutation.mutate(resumeId);
+    }
   };
 
   const handleTemplateSelect = (templateId: number) => {
@@ -322,6 +360,7 @@ export default function Dashboard() {
                     <div className="flex space-x-2">
                       <Link href={`/builder/${resume.id}`} className="flex-1">
                         <Button className="w-full" size="sm">
+                          <Edit className="w-4 h-4 mr-1" />
                           Edit
                         </Button>
                       </Link>
@@ -330,8 +369,19 @@ export default function Dashboard() {
                         size="sm"
                         onClick={() => handleDownload(resume.id)}
                         disabled={downloadMutation.isPending}
+                        title="Download PDF"
                       >
                         <Download className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDelete(resume.id)}
+                        disabled={deleteMutation.isPending}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Delete Resume"
+                      >
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </div>

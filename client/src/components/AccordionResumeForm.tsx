@@ -329,20 +329,26 @@ export default function AccordionResumeForm({
   useEffect(() => {
     console.log("AccordionResumeForm - initialData received:", initialData);
     if (initialData) {
+      // Handle both single object and array format
+      const resumeData = Array.isArray(initialData) ? initialData[0] : initialData;
+      console.log("Processing resume data:", resumeData);
+      
+      if (!resumeData) return;
+      
       // Map parsed data to form structure with proper field mapping
       const formData = {
-        title: initialData.title || "",
-        fullName: initialData.fullName || "",
-        professionalTitle: initialData.professionalTitle || "",
-        email: initialData.email || "",
-        mobileNumber: initialData.mobileNumber || "",
-        address: initialData.address || "",
-        linkedinId: initialData.linkedinId || "",
-        summary: initialData.summary || "",
-        careerHighlights: initialData.careerHighlights || "",
+        title: resumeData.title || "",
+        fullName: resumeData.fullName || "",
+        professionalTitle: resumeData.professionalTitle || "",
+        email: resumeData.email || "",
+        mobileNumber: resumeData.mobileNumber || "",
+        address: resumeData.address || "",
+        linkedinId: resumeData.linkedinId || "",
+        summary: resumeData.summary || "",
+        careerHighlights: resumeData.careerHighlights || "",
         
         // Skills - ensure proper structure with IDs
-        skills: (initialData.skills || []).map((skill: any, index: number) => ({
+        skills: (resumeData.skills || []).map((skill: any, index: number) => ({
           id: skill.id || `skill-${index}`,
           name: skill.name || "",
           rating: skill.rating || 0,
@@ -350,7 +356,7 @@ export default function AccordionResumeForm({
         })),
         
         // Education - ensure proper structure with IDs
-        education: (initialData.education || []).map((edu: any, index: number) => ({
+        education: (resumeData.education || []).map((edu: any, index: number) => ({
           id: edu.id || `edu-${index}`,
           institution: edu.institution || "",
           board: edu.board || "",
@@ -369,7 +375,7 @@ export default function AccordionResumeForm({
         })),
         
         // Work Experience - ensure proper structure with IDs
-        workExperience: (initialData.workExperience || []).map((work: any, index: number) => ({
+        workExperience: (resumeData.workExperience || []).map((work: any, index: number) => ({
           id: work.id || `work-${index}`,
           company: work.company || "",
           position: work.position || "",
@@ -384,7 +390,7 @@ export default function AccordionResumeForm({
         })),
         
         // Internships - ensure proper structure with IDs
-        internships: (initialData.internships || []).map((intern: any, index: number) => ({
+        internships: (resumeData.internships || []).map((intern: any, index: number) => ({
           id: intern.id || `intern-${index}`,
           company: intern.company || "",
           position: intern.position || "",
@@ -398,7 +404,7 @@ export default function AccordionResumeForm({
         })),
         
         // Certifications - ensure proper structure with IDs
-        certifications: (initialData.certifications || []).map((cert: any, index: number) => ({
+        certifications: (resumeData.certifications || []).map((cert: any, index: number) => ({
           id: cert.id || `cert-${index}`,
           name: cert.name || "",
           issuer: cert.issuer || "",
@@ -408,7 +414,7 @@ export default function AccordionResumeForm({
         })),
         
         // Projects - ensure proper structure with IDs
-        projects: (initialData.projects || []).map((project: any, index: number) => ({
+        projects: (resumeData.projects || []).map((project: any, index: number) => ({
           id: project.id || `project-${index}`,
           name: project.name || "",
           description: project.description || "",
@@ -419,14 +425,14 @@ export default function AccordionResumeForm({
         })),
         
         // Languages - ensure proper structure with IDs
-        languages: (initialData.languages || []).map((lang: any, index: number) => ({
+        languages: (resumeData.languages || []).map((lang: any, index: number) => ({
           id: lang.id || `lang-${index}`,
           name: lang.name || "",
           rating: lang.rating || 0
         })),
         
         // References - ensure proper structure with IDs
-        references: (initialData.references || []).map((ref: any, index: number) => ({
+        references: (resumeData.references || []).map((ref: any, index: number) => ({
           id: ref.id || `ref-${index}`,
           name: ref.name || "",
           position: ref.position || "",
@@ -439,13 +445,13 @@ export default function AccordionResumeForm({
         })),
         
         // Simple string fields
-        awardsAndHonors: initialData.awardsAndHonors || "",
-        professionalAffiliations: initialData.professionalAffiliations || "",
-        extraCurricularActivities: initialData.extraCurricularActivities || "",
-        personalInterests: initialData.personalInterests || "",
+        awardsAndHonors: resumeData.awardsAndHonors || "",
+        professionalAffiliations: resumeData.professionalAffiliations || "",
+        extraCurricularActivities: resumeData.extraCurricularActivities || "",
+        personalInterests: resumeData.personalInterests || "",
         
         // Personal info object
-        personalInfo: initialData.personalInfo || {}
+        personalInfo: resumeData.personalInfo || {}
       };
       
       console.log("Resetting form with data:", formData);
