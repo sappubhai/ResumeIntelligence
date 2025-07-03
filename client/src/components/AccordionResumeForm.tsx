@@ -288,30 +288,41 @@ export default function AccordionResumeForm({
   });
 
   const onSubmit = (data: ComprehensiveResumeFormData) => {
+    console.log("Form data before save:", data);
+    
+    // Clean and format the data for the database
     const resumeData: Partial<InsertResume> = {
-      title: data.title,
-      fullName: data.fullName,
-      professionalTitle: data.professionalTitle,
-      email: data.email,
-      mobileNumber: data.mobileNumber,
-      address: data.address,
-      linkedinId: data.linkedinId,
-      summary: data.summary,
-      careerHighlights: data.careerHighlights,
-      skills: data.skills,
-      education: data.education,
-      workExperience: data.workExperience,
-      internships: data.internships,
-      certifications: data.certifications,
-      awardsAndHonors: data.awardsAndHonors,
-      professionalAffiliations: data.professionalAffiliations,
-      projects: data.projects,
-      extraCurricularActivities: data.extraCurricularActivities,
-      languages: data.languages,
-      personalInfo: data.personalInfo,
-      personalInterests: data.personalInterests,
-      references: data.references,
+      title: data.title || "",
+      fullName: data.fullName || "",
+      professionalTitle: data.professionalTitle || "",
+      email: data.email || "",
+      mobileNumber: data.mobileNumber || "",
+      address: data.address || "",
+      linkedinId: data.linkedinId || "",
+      summary: data.summary || "",
+      careerHighlights: data.careerHighlights || "",
+      
+      // Ensure arrays are properly formatted and never null
+      skills: data.skills || [],
+      education: data.education || [],
+      workExperience: data.workExperience || [],
+      internships: data.internships || [],
+      certifications: data.certifications || [],
+      projects: data.projects || [],
+      languages: data.languages || [],
+      references: data.references || [],
+      
+      // Ensure string fields are proper nulls or strings
+      awardsAndHonors: data.awardsAndHonors || null,
+      professionalAffiliations: data.professionalAffiliations || null,
+      extraCurricularActivities: data.extraCurricularActivities || null,
+      personalInterests: data.personalInterests || null,
+      
+      // Ensure personalInfo is a proper object or null
+      personalInfo: data.personalInfo && Object.keys(data.personalInfo).length > 0 ? data.personalInfo : null,
     };
+    
+    console.log("Resume data being saved:", resumeData);
     onSave(resumeData);
   };
 

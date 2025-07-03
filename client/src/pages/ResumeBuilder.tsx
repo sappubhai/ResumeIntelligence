@@ -65,6 +65,7 @@ export default function ResumeBuilder() {
       });
     },
     onError: (error) => {
+      console.error("Save error details:", error);
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -76,9 +77,25 @@ export default function ResumeBuilder() {
         }, 500);
         return;
       }
+      
+      // Try to extract detailed error information
+      let errorMessage = "Failed to save resume";
+      if (error instanceof Error) {
+        try {
+          const errorData = JSON.parse(error.message);
+          if (errorData.errors && Array.isArray(errorData.errors)) {
+            errorMessage = `Validation errors: ${errorData.errors.map((e: any) => e.message || e.path?.join('.') + ': ' + e.message).join(', ')}`;
+          } else {
+            errorMessage = errorData.message || error.message;
+          }
+        } catch {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
         title: "Save Failed",
-        description: error instanceof Error ? error.message : "Failed to save resume",
+        description: errorMessage,
         variant: "destructive",
       });
     },
