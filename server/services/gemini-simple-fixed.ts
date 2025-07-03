@@ -32,8 +32,14 @@ export interface ParsedResumeData {
 
 export async function parseResumeWithAI(resumeText: string): Promise<ParsedResumeData> {
   try {
+    // Clean the text to remove invalid UTF-8 sequences and null bytes
+    const cleanText = resumeText
+      .replace(/\0/g, '') // Remove null bytes
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '') // Remove control characters
+      .replace(/[^\x20-\x7E\u00A0-\uFFFF]/g, ''); // Keep only printable characters
+    
     // Simple rule-based parsing for now (can be enhanced with AI later)
-    const lines = resumeText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    const lines = cleanText.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     
     let result: ParsedResumeData = {
       fullName: "",
@@ -47,13 +53,23 @@ export async function parseResumeWithAI(resumeText: string): Promise<ParsedResum
       hobbies: ""
     };
 
+    // Helper function to clean text fields
+    const cleanField = (text: string) => {
+      if (!text) return "";
+      return text
+        .replace(/\0/g, '')
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '')
+        .replace(/[^\x20-\x7E\u00A0-\uFFFF]/g, '')
+        .trim();
+    };
+
     // Extract email
-    const emailMatch = resumeText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
-    if (emailMatch) result.email = emailMatch[0];
+    const emailMatch = cleanText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
+    if (emailMatch) result.email = cleanField(emailMatch[0]);
 
     // Extract phone number
-    const phoneMatch = resumeText.match(/(\+?1?[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}/);
-    if (phoneMatch) result.mobileNumber = phoneMatch[0];
+    const phoneMatch = cleanText.match(/(\+?1?[-.\s]?)?\(?[0-9]{3}\)?[-.\s]?[0-9]{3}[-.\s]?[0-9]{4}/);
+    if (phoneMatch) result.mobileNumber = cleanField(phoneMatch[0]);
 
     // Extract name (likely to be in the first few lines)
     for (const line of lines.slice(0, 5)) {
@@ -63,7 +79,7 @@ export async function parseResumeWithAI(resumeText: string): Promise<ParsedResum
           line.split(' ').length >= 2 &&
           !line.toLowerCase().includes('resume') &&
           !line.toLowerCase().includes('cv')) {
-        result.fullName = line;
+        result.fullName = cleanField(line);
         break;
       }
     }
@@ -80,7 +96,7 @@ export async function parseResumeWithAI(resumeText: string): Promise<ParsedResum
           }
         }
         if (summaryLines.length > 0) {
-          result.summary = summaryLines.join(' ');
+          result.summary = cleanField(summaryLines.join(' '));
           break;
         }
       }
@@ -97,11 +113,14 @@ export async function parseResumeWithAI(resumeText: string): Promise<ParsedResum
             // Split by common delimiters
             const skills = skillLine.split(/[,•·|;]/).map(s => s.trim()).filter(s => s.length > 1);
             for (const skill of skills) {
-              result.skills!.push({
-                name: skill,
-                level: 'Intermediate' as const,
-                category: 'Technical'
-              });
+              const cleanSkill = cleanField(skill);
+              if (cleanSkill.length > 0) {
+                result.skills!.push({
+                  name: cleanSkill,
+                  level: 'Intermediate' as const,
+                  category: 'Technical'
+                });
+              }
             }
           }
         }
@@ -120,15 +139,18 @@ export async function parseResumeWithAI(resumeText: string): Promise<ParsedResum
           if (workLine && workLine.length > 5 && workLine.length < 100) {
             // Simple heuristic: if line has dates, it might be work experience
             if (workLine.match(/\d{4}/) || workLine.match(/\d{1,2}\/\d{4}/)) {
-              result.workExperience!.push({
-                company: "Company Name",
-                position: workLine,
-                startDate: "2020-01-01",
-                endDate: "2023-12-31",
-                isCurrent: false,
-                description: "Work experience details",
-                location: ""
-              });
+              const cleanWorkLine = cleanField(workLine);
+              if (cleanWorkLine.length > 0) {
+                result.workExperience!.push({
+                  company: "Company Name",
+                  position: cleanWorkLine,
+                  startDate: "2020-01-01",
+                  endDate: "2023-12-31",
+                  isCurrent: false,
+                  description: "Work experience details",
+                  location: ""
+                });
+              }
             }
           }
         }
@@ -146,15 +168,18 @@ export async function parseResumeWithAI(resumeText: string): Promise<ParsedResum
           if (eduLine && eduLine.length > 5 && eduLine.length < 100) {
             if (eduLine.match(/\d{4}/) || eduLine.toLowerCase().includes('degree') || 
                 eduLine.toLowerCase().includes('bachelor') || eduLine.toLowerCase().includes('master')) {
-              result.education!.push({
-                institution: eduLine,
-                degree: "Degree",
-                field: "Field of Study",
-                startDate: "2016-01-01",
-                endDate: "2020-12-31",
-                gpa: "",
-                description: ""
-              });
+              const cleanEduLine = cleanField(eduLine);
+              if (cleanEduLine.length > 0) {
+                result.education!.push({
+                  institution: cleanEduLine,
+                  degree: "Degree",
+                  field: "Field of Study",
+                  startDate: "2016-01-01",
+                  endDate: "2020-12-31",
+                  gpa: "",
+                  description: ""
+                });
+              }
             }
           }
         }
@@ -187,13 +212,23 @@ export async function parseResumeWithAI(resumeText: string): Promise<ParsedResum
     return result;
   } catch (error) {
     console.error("Error parsing resume:", error);
+    // Helper function for error handling
+    const cleanErrorText = (text: string) => {
+      if (!text) return "";
+      return text
+        .replace(/\0/g, '')
+        .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F-\u009F]/g, '')
+        .replace(/[^\x20-\x7E\u00A0-\uFFFF]/g, '')
+        .trim();
+    };
+    
     // Return basic structure with extracted text
     return {
       fullName: "",
       professionalTitle: "",
       email: "",
       mobileNumber: "",
-      summary: resumeText.substring(0, 200) + "...",
+      summary: cleanErrorText(resumeText.substring(0, 200)) + "...",
       workExperience: [],
       education: [],
       skills: [],
