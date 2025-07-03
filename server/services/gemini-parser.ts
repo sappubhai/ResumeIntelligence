@@ -399,7 +399,91 @@ ${cleanText}`;
       }));
     }
 
-    console.log('Successfully parsed resume data:', JSON.stringify(parsedData, null, 2));
+    // Fix date formats - convert DD-MM-YYYY to YYYY-MM-DD
+    const fixDateFormat = (dateStr: string): string => {
+      if (!dateStr || dateStr.trim() === '') return '';
+      
+      // Handle DD-MM-YYYY format
+      const ddmmyyyyMatch = dateStr.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+      if (ddmmyyyyMatch) {
+        const [, day, month, year] = ddmmyyyyMatch;
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      
+      // Handle DD/MM/YYYY format
+      const ddmmyyyySlashMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (ddmmyyyySlashMatch) {
+        const [, day, month, year] = ddmmyyyySlashMatch;
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      
+      // Handle MM/DD/YYYY format
+      const mmddyyyyMatch = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (mmddyyyyMatch) {
+        const [, month, day, year] = mmddyyyyMatch;
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      
+      // If already in YYYY-MM-DD format or other formats, return as is
+      return dateStr;
+    };
+
+    // Fix dateOfBirth format
+    if (parsedData.dateOfBirth) {
+      parsedData.dateOfBirth = fixDateFormat(parsedData.dateOfBirth);
+    }
+
+    // Fix work experience dates
+    if (parsedData.workExperience && Array.isArray(parsedData.workExperience)) {
+      parsedData.workExperience = parsedData.workExperience.map((exp: any) => ({
+        ...exp,
+        startDate: fixDateFormat(exp.startDate || ''),
+        endDate: fixDateFormat(exp.endDate || ''),
+      }));
+    }
+
+    // Fix education dates
+    if (parsedData.education && Array.isArray(parsedData.education)) {
+      parsedData.education = parsedData.education.map((edu: any) => ({
+        ...edu,
+        startDate: fixDateFormat(edu.startDate || ''),
+        endDate: fixDateFormat(edu.endDate || ''),
+      }));
+    }
+
+    // Fix internship dates
+    if (parsedData.internships && Array.isArray(parsedData.internships)) {
+      parsedData.internships = parsedData.internships.map((internship: any) => ({
+        ...internship,
+        startDate: fixDateFormat(internship.startDate || ''),
+        endDate: fixDateFormat(internship.endDate || ''),
+      }));
+    }
+
+    // Fix certification dates
+    if (parsedData.certifications && Array.isArray(parsedData.certifications)) {
+      parsedData.certifications = parsedData.certifications.map((cert: any) => ({
+        ...cert,
+        issueDate: fixDateFormat(cert.issueDate || ''),
+        expiryDate: fixDateFormat(cert.expiryDate || ''),
+      }));
+    }
+
+    // Fix project dates
+    if (parsedData.projects && Array.isArray(parsedData.projects)) {
+      parsedData.projects = parsedData.projects.map((project: any) => ({
+        ...project,
+        startDate: fixDateFormat(project.startDate || ''),
+        endDate: fixDateFormat(project.endDate || ''),
+      }));
+    }
+
+    // Fix personal info birthdate
+    if (parsedData.personalInfo && parsedData.personalInfo.birthdate) {
+      parsedData.personalInfo.birthdate = fixDateFormat(parsedData.personalInfo.birthdate);
+    }
+
+    console.log('Successfully parsed resume data with fixed dates:', JSON.stringify(parsedData, null, 2));
     return parsedData;
 
   } catch (error) {
