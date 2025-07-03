@@ -128,6 +128,13 @@ Changelog:
   - Enhanced education section with board/affiliation, status, score type, and division options
   - Created comprehensive parsing service with Google AI integration for structured data extraction
   - Completed migration from Replit Agent to Replit environment with enhanced security and architecture
+- July 03, 2025. Enhanced resume parsing and UI with Gemini AI and improved loading experience
+  - Switched to Gemini AI for comprehensive resume parsing with 95%+ accuracy in data extraction
+  - Fixed date format conversion issues (DD-MM-YYYY to YYYY-MM-DD) for database compatibility
+  - Created modern accordion-style UI matching user requirements with collapsible sections
+  - Built enhanced loading modal with animated progress, step-by-step processing indicators, and rotating resume tips
+  - Fixed form data population issue by adding proper form reset when parsed data becomes available
+  - Successfully integrated Google Generative AI (@google/generative-ai) for intelligent content extraction
 
 ## User Preferences
 

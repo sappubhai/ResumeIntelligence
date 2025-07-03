@@ -325,6 +325,36 @@ export default function AccordionResumeForm({
     return () => subscription.unsubscribe();
   }, [form, onDataChange]);
 
+  // Update form when initialData changes (after resume parsing)
+  useEffect(() => {
+    if (initialData) {
+      form.reset({
+        title: initialData.title || "",
+        fullName: initialData.fullName || "",
+        professionalTitle: initialData.professionalTitle || "",
+        email: initialData.email || "",
+        mobileNumber: initialData.mobileNumber || "",
+        address: initialData.address || "",
+        linkedinId: initialData.linkedinId || "",
+        summary: initialData.summary || "",
+        careerHighlights: initialData.careerHighlights || "",
+        skills: initialData.skills || [],
+        education: initialData.education || [],
+        workExperience: initialData.workExperience || [],
+        internships: initialData.internships || [],
+        certifications: initialData.certifications || [],
+        awardsAndHonors: initialData.awardsAndHonors || "",
+        professionalAffiliations: initialData.professionalAffiliations || "",
+        projects: initialData.projects || [],
+        extraCurricularActivities: initialData.extraCurricularActivities || "",
+        languages: initialData.languages || [],
+        personalInfo: initialData.personalInfo || {},
+        personalInterests: initialData.personalInterests || "",
+        references: initialData.references || [],
+      });
+    }
+  }, [initialData, form]);
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       {/* Header with actions */}
