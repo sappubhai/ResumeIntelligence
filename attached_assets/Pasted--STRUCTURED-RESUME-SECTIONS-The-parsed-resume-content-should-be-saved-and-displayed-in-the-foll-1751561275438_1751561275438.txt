@@ -1,0 +1,100 @@
+📑 STRUCTURED RESUME SECTIONS
+
+The parsed resume content should be saved and displayed in the following structured, editable sections:
+
+---
+
+### 1. Profile / About Me
+- Your Position/Career Title
+- Profile Description / Summary
+
+### 2. Career Highlights
+- (Text area or bullet list)
+
+### 3. Skills
+- List of skills with self-rating (0 to 5 stars)
+- Add / Edit / Delete functionality for each skill
+
+### 4. Education
+Each entry includes:
+- School Name
+- School Board / Affiliation
+- Country, State, City
+- Degree Type (dropdown: SSC, HSC, Graduation, Post-Grad, Diploma, Other)
+- Status (Completed / Pursuing)
+- Specialization
+- Score: Radio option to select between Percentage or CGPA
+- Division (dropdown: I, II, III)
+- Add/Delete education entry box
+
+### 5. Work Experience
+Each entry includes:
+- Company Name
+- Position
+- Country, State, City
+- Start Date – End Date
+- "Currently Working Here" checkbox to disable End Date
+- Experience Summary (textarea)
+- Add/Delete experience entries
+
+### 6. Internships
+Same structure as Work Experience
+
+### 7. Training & Certifications
+Each entry includes:
+- Name / Type of Training
+- Bestowing Institution (optional)
+- Status (Completed/In Progress)
+- Date
+- Add/Delete option
+
+### 8. Awards and Honors
+- Free text area or bullet list
+
+### 9. Professional Affiliations
+- Free text area or list
+
+### 10. Projects
+Each entry includes:
+- Project Name
+- Project Period (Start – End Date)
+- Project Description
+- Add/Delete functionality
+
+### 11. Extra-Curricular Activities
+- Text Area
+
+### 12. Languages
+- List of known languages with self-rating (0 to 5 stars)
+- Add/Delete option
+
+### 13. Personal Information
+- Photo Upload (with preview)
+- Birthdate (Date Picker)
+- Gender (Male / Female / Other)
+- Marital Status (Single / Married / Other)
+- Passport Number
+- Nationality
+- Any additional details
+
+### 14. Personal Interests
+- Free text area
+
+### 15. References
+Each entry includes:
+- Name
+- Position
+- Company
+- Country, State, City
+- Mobile
+- Email
+- Add/Edit/Delete functionality
+
+---
+
+🔍 INTELLIGENT PARSING REQUIREMENT
+
+- When a resume is uploaded, intelligently match the content from the resume to the **best-fitting section** from above.
+- Section headings in resumes can vary (e.g., "Bio" should map to "Profile", "Key Skills" to "Skills", "Education Background" to "Education", etc.).
+- Resume data should be parsed into clean, editable formats.
+- Consider handling both modern and old-style resumes.

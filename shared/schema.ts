@@ -87,6 +87,16 @@ export const resumes = pgTable("resumes", {
   projects: jsonb("projects").$type<Project[]>().default([]),
   achievements: jsonb("achievements").$type<Achievement[]>().default([]),
   languages: jsonb("languages").$type<Language[]>().default([]),
+  internships: jsonb("internships").$type<Internship[]>().default([]),
+  references: jsonb("references").$type<Reference[]>().default([]),
+  personalInfo: jsonb("personal_info").$type<PersonalInfo>(),
+  
+  // Text fields for various sections
+  careerHighlights: text("career_highlights"),
+  awardsAndHonors: text("awards_and_honors"),
+  professionalAffiliations: text("professional_affiliations"),
+  extraCurricularActivities: text("extra_curricular_activities"),
+  personalInterests: text("personal_interests"),
   hobbies: text("hobbies"),
   additionalInfo: text("additional_info"),
   
@@ -124,30 +134,41 @@ export interface WorkExperience {
   isCurrent: boolean;
   description: string;
   location?: string;
+  country?: string;
+  state?: string;
+  city?: string;
 }
 
 export interface Education {
   id: string;
   institution: string;
+  board?: string;
   degree: string;
   field: string;
   startDate: string;
   endDate?: string;
-  gpa?: string;
+  status: 'Completed' | 'Pursuing';
+  scoreType: 'Percentage' | 'CGPA';
+  score?: string;
+  division?: 'I' | 'II' | 'III';
+  country?: string;
+  state?: string;
+  city?: string;
   description?: string;
 }
 
 export interface Skill {
   id: string;
   name: string;
-  level: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
+  rating: number; // 0-5 stars
   category: string;
 }
 
 export interface Certification {
   id: string;
   name: string;
-  issuer: string;
+  issuer?: string;
+  status: 'Completed' | 'In Progress';
   issueDate: string;
   expiryDate?: string;
   credentialId?: string;
@@ -176,7 +197,42 @@ export interface Achievement {
 export interface Language {
   id: string;
   name: string;
-  proficiency: 'Basic' | 'Conversational' | 'Fluent' | 'Native';
+  rating: number; // 0-5 stars
+}
+
+export interface Internship {
+  id: string;
+  company: string;
+  position: string;
+  startDate: string;
+  endDate?: string;
+  isCurrent: boolean;
+  description: string;
+  country?: string;
+  state?: string;
+  city?: string;
+}
+
+export interface Reference {
+  id: string;
+  name: string;
+  position: string;
+  company: string;
+  country?: string;
+  state?: string;
+  city?: string;
+  mobile?: string;
+  email?: string;
+}
+
+export interface PersonalInfo {
+  photo?: string;
+  birthdate?: string;
+  gender?: 'Male' | 'Female' | 'Other';
+  maritalStatus?: 'Single' | 'Married' | 'Other';
+  passportNumber?: string;
+  nationality?: string;
+  additionalDetails?: string;
 }
 
 // Insert schemas

@@ -176,83 +176,7 @@ For skills and languages, assign ratings 0-5 based on context clues.
 For education status, determine "Completed" or "Pursuing".
 For score type, determine "Percentage" or "CGPA" based on format.
 
-Return ONLY valid JSON in this exact structure:
-{
-  "fullName": "string",
-  "professionalTitle": "string",
-  "email": "string",
-  "mobileNumber": "string",
-  "dateOfBirth": "YYYY-MM-DD",
-  "address": "string",
-  "linkedinId": "string",
-  "summary": "string",
-  "workExperience": [
-    {
-      "company": "string",
-      "position": "string",
-      "startDate": "YYYY-MM-DD",
-      "endDate": "YYYY-MM-DD",
-      "isCurrent": boolean,
-      "description": "string",
-      "location": "string"
-    }
-  ],
-  "education": [
-    {
-      "institution": "string",
-      "degree": "string",
-      "field": "string",
-      "startDate": "YYYY-MM-DD",
-      "endDate": "YYYY-MM-DD",
-      "gpa": "string",
-      "description": "string"
-    }
-  ],
-  "skills": [
-    {
-      "name": "string",
-      "level": "Beginner|Intermediate|Advanced|Expert",
-      "category": "string"
-    }
-  ],
-  "certifications": [
-    {
-      "name": "string",
-      "issuer": "string",
-      "issueDate": "YYYY-MM-DD",
-      "expiryDate": "YYYY-MM-DD",
-      "credentialId": "string",
-      "url": "string"
-    }
-  ],
-  "projects": [
-    {
-      "name": "string",
-      "description": "string",
-      "technologies": ["string"],
-      "startDate": "YYYY-MM-DD",
-      "endDate": "YYYY-MM-DD",
-      "url": "string",
-      "repository": "string"
-    }
-  ],
-  "achievements": [
-    {
-      "title": "string",
-      "description": "string",
-      "date": "YYYY-MM-DD",
-      "category": "string"
-    }
-  ],
-  "languages": [
-    {
-      "name": "string",
-      "proficiency": "Basic|Conversational|Fluent|Native"
-    }
-  ],
-  "hobbies": "string",
-  "additionalInfo": "string"
-}
+Return ONLY valid JSON with comprehensive data extraction.
 
 Resume text:
 ${resumeText}
@@ -260,19 +184,16 @@ ${resumeText}
 
     const model = genai.getGenerativeModel({ model: "gemini-1.5-flash" });
     
-    const response = await model.generateContent({
-      contents: [{
-        role: "user",
-        parts: [{ text: prompt }]
-      }],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 8192,
-      }
-    });
-
+    const response = await model.generateContent(prompt);
     const resultText = response.response.text();
-    const result = JSON.parse(resultText || "{}");
+    
+    // Clean up the response text to extract JSON
+    const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("No valid JSON found in AI response");
+    }
+    
+    const result = JSON.parse(jsonMatch[0]);
     
     // Add unique IDs to array items
     if (result.workExperience) {
@@ -306,14 +227,14 @@ ${resumeText}
     if (result.projects) {
       result.projects = result.projects.map((item: any, index: number) => ({
         ...item,
-        id: `project_${index + 1}`,
+        id: `proj_${index + 1}`,
       }));
     }
     
     if (result.achievements) {
       result.achievements = result.achievements.map((item: any, index: number) => ({
         ...item,
-        id: `achievement_${index + 1}`,
+        id: `achv_${index + 1}`,
       }));
     }
     
@@ -323,10 +244,24 @@ ${resumeText}
         id: `lang_${index + 1}`,
       }));
     }
-
-    return result as ParsedResumeData;
+    
+    if (result.internships) {
+      result.internships = result.internships.map((item: any, index: number) => ({
+        ...item,
+        id: `intern_${index + 1}`,
+      }));
+    }
+    
+    if (result.references) {
+      result.references = result.references.map((item: any, index: number) => ({
+        ...item,
+        id: `ref_${index + 1}`,
+      }));
+    }
+    
+    return result;
   } catch (error) {
     console.error("Error parsing resume with AI:", error);
-    throw new Error("Failed to parse resume content with AI");
+    throw new Error("Failed to parse resume with AI");
   }
 }
