@@ -84,41 +84,73 @@ export async function parseResumeWithAI(resumeText: string): Promise<ParsedResum
       }
     }
 
-    // Extract summary/objective
-    const summaryKeywords = ['summary', 'objective', 'profile', 'about', 'overview'];
+    // Extract summary/objective - look for more patterns
+    const summaryKeywords = ['summary', 'objective', 'profile', 'about', 'overview', 'career objective', 'professional summary', 'bio', 'introduction'];
+    let summaryFound = false;
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].toLowerCase();
       if (summaryKeywords.some(keyword => line.includes(keyword))) {
         const summaryLines = [];
-        for (let j = i + 1; j < Math.min(i + 6, lines.length); j++) {
-          if (lines[j] && lines[j].length > 10) {
+        for (let j = i + 1; j < Math.min(i + 8, lines.length); j++) {
+          if (lines[j] && lines[j].length > 10 && !lines[j].toLowerCase().includes('experience') && !lines[j].toLowerCase().includes('education')) {
+            summaryLines.push(lines[j]);
+          } else if (lines[j] && lines[j].length > 50) {
+            // If it's a long line, it might be a summary
             summaryLines.push(lines[j]);
           }
         }
         if (summaryLines.length > 0) {
           result.summary = cleanField(summaryLines.join(' '));
+          summaryFound = true;
+          break;
+        }
+      }
+    }
+    
+    // If no summary found, look for first paragraph after personal details
+    if (!summaryFound && result.fullName) {
+      for (let i = 0; i < Math.min(10, lines.length); i++) {
+        const line = lines[i];
+        if (line.length > 100 && !line.includes('@') && !line.match(/\d{3}/)) {
+          result.summary = cleanField(line);
           break;
         }
       }
     }
 
-    // Extract skills
-    const skillKeywords = ['skills', 'technologies', 'competencies', 'expertise'];
+    // Extract skills - enhanced pattern recognition
+    const skillKeywords = ['skills', 'technologies', 'competencies', 'expertise', 'technical skills', 'core competencies', 'key skills'];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].toLowerCase();
       if (skillKeywords.some(keyword => line.includes(keyword))) {
-        for (let j = i + 1; j < Math.min(i + 10, lines.length); j++) {
+        // Look for skills in the following lines
+        for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
           const skillLine = lines[j];
-          if (skillLine && skillLine.length > 2 && skillLine.length < 100) {
-            // Split by common delimiters
-            const skills = skillLine.split(/[,•·|;]/).map(s => s.trim()).filter(s => s.length > 1);
+          if (skillLine && skillLine.length > 2 && skillLine.length < 150) {
+            // Stop if we hit another section
+            if (skillLine.toLowerCase().includes('experience') || 
+                skillLine.toLowerCase().includes('education') ||
+                skillLine.toLowerCase().includes('certification')) {
+              break;
+            }
+            
+            // Split by common delimiters and extract skills
+            const skills = skillLine.split(/[,•·|;:\n\t]/).map(s => s.trim()).filter(s => s.length > 1 && s.length < 50);
             for (const skill of skills) {
               const cleanSkill = cleanField(skill);
-              if (cleanSkill.length > 0) {
+              if (cleanSkill.length > 1 && !cleanSkill.match(/^\d+$/) && !cleanSkill.includes('years')) {
+                // Determine skill category based on common patterns
+                let category = 'Technical';
+                if (cleanSkill.toLowerCase().includes('management') || cleanSkill.toLowerCase().includes('leadership')) {
+                  category = 'Management';
+                } else if (cleanSkill.toLowerCase().includes('communication') || cleanSkill.toLowerCase().includes('teamwork')) {
+                  category = 'Soft Skills';
+                }
+                
                 result.skills!.push({
                   name: cleanSkill,
                   level: 'Intermediate' as const,
-                  category: 'Technical'
+                  category: category
                 });
               }
             }
@@ -128,26 +160,60 @@ export async function parseResumeWithAI(resumeText: string): Promise<ParsedResum
       }
     }
 
-    // Extract basic work experience
-    const workKeywords = ['experience', 'employment', 'work history', 'career'];
+    // Extract work experience - enhanced pattern recognition
+    const workKeywords = ['experience', 'employment', 'work history', 'career', 'professional experience', 'work experience', 'employment history'];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].toLowerCase();
       if (workKeywords.some(keyword => line.includes(keyword))) {
+        let currentJob = null;
         // Look for company/position patterns in the next lines
-        for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
+        for (let j = i + 1; j < Math.min(i + 20, lines.length); j++) {
           const workLine = lines[j];
-          if (workLine && workLine.length > 5 && workLine.length < 100) {
-            // Simple heuristic: if line has dates, it might be work experience
-            if (workLine.match(/\d{4}/) || workLine.match(/\d{1,2}\/\d{4}/)) {
+          if (workLine && workLine.length > 3) {
+            // Stop if we hit another major section
+            if (workLine.toLowerCase().includes('education') || 
+                workLine.toLowerCase().includes('skills') ||
+                workLine.toLowerCase().includes('certification')) {
+              break;
+            }
+            
+            // Look for date patterns (various formats)
+            const datePattern = /(\d{4}|\d{1,2}\/\d{4}|\d{1,2}\/\d{1,2}\/\d{4}|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i;
+            
+            if (datePattern.test(workLine)) {
+              // This line likely contains position and dates
               const cleanWorkLine = cleanField(workLine);
               if (cleanWorkLine.length > 0) {
+                // Try to extract company name from previous line or current line
+                let company = "Company Name";
+                let position = cleanWorkLine;
+                
+                // Look for company indicators
+                if (j > 0 && lines[j-1] && !datePattern.test(lines[j-1])) {
+                  company = cleanField(lines[j-1]);
+                  if (company.length > 50) company = company.substring(0, 50) + "...";
+                }
+                
+                // Extract description from following lines
+                let description = "";
+                for (let k = j + 1; k < Math.min(j + 5, lines.length); k++) {
+                  if (lines[k] && lines[k].length > 10 && !datePattern.test(lines[k])) {
+                    if (!lines[k].toLowerCase().includes('education') && 
+                        !lines[k].toLowerCase().includes('skills')) {
+                      description += lines[k] + " ";
+                    } else {
+                      break;
+                    }
+                  }
+                }
+                
                 result.workExperience!.push({
-                  company: "Company Name",
-                  position: cleanWorkLine,
+                  company: company,
+                  position: position,
                   startDate: "2020-01-01",
-                  endDate: "2023-12-31",
-                  isCurrent: false,
-                  description: "Work experience details",
+                  endDate: workLine.toLowerCase().includes('present') || workLine.toLowerCase().includes('current') ? undefined : "2023-12-31",
+                  isCurrent: workLine.toLowerCase().includes('present') || workLine.toLowerCase().includes('current'),
+                  description: cleanField(description.trim()) || "Work experience details",
                   location: ""
                 });
               }
@@ -158,22 +224,60 @@ export async function parseResumeWithAI(resumeText: string): Promise<ParsedResum
       }
     }
 
-    // Extract basic education
-    const eduKeywords = ['education', 'academic', 'university', 'college', 'degree'];
+    // Extract education - enhanced pattern recognition
+    const eduKeywords = ['education', 'academic', 'university', 'college', 'degree', 'qualification', 'academic background'];
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i].toLowerCase();
       if (eduKeywords.some(keyword => line.includes(keyword))) {
-        for (let j = i + 1; j < Math.min(i + 10, lines.length); j++) {
+        for (let j = i + 1; j < Math.min(i + 15, lines.length); j++) {
           const eduLine = lines[j];
-          if (eduLine && eduLine.length > 5 && eduLine.length < 100) {
-            if (eduLine.match(/\d{4}/) || eduLine.toLowerCase().includes('degree') || 
-                eduLine.toLowerCase().includes('bachelor') || eduLine.toLowerCase().includes('master')) {
+          if (eduLine && eduLine.length > 5) {
+            // Stop if we hit another major section
+            if (eduLine.toLowerCase().includes('experience') || 
+                eduLine.toLowerCase().includes('skills') ||
+                eduLine.toLowerCase().includes('certification')) {
+              break;
+            }
+            
+            // Look for degree patterns
+            const degreePattern = /(bachelor|master|phd|diploma|certificate|b\.?tech|m\.?tech|b\.?sc|m\.?sc|b\.?com|m\.?com|mba|be|me)/i;
+            const datePattern = /(\d{4}|\d{1,2}\/\d{4})/;
+            
+            if (degreePattern.test(eduLine) || datePattern.test(eduLine)) {
               const cleanEduLine = cleanField(eduLine);
               if (cleanEduLine.length > 0) {
+                // Try to parse institution and degree
+                let institution = "Institution";
+                let degree = "Degree";
+                let field = "Field of Study";
+                
+                // Look for institution in nearby lines
+                for (let k = Math.max(0, j-2); k < Math.min(j+3, lines.length); k++) {
+                  if (k !== j && lines[k] && lines[k].length > 5) {
+                    const testLine = lines[k].toLowerCase();
+                    if (testLine.includes('university') || testLine.includes('college') || 
+                        testLine.includes('institute') || testLine.includes('school')) {
+                      institution = cleanField(lines[k]);
+                      break;
+                    }
+                  }
+                }
+                
+                // Extract degree and field from the main line
+                const degreeMatch = cleanEduLine.match(degreePattern);
+                if (degreeMatch) {
+                  degree = degreeMatch[0];
+                  // Try to find field after degree
+                  const afterDegree = cleanEduLine.substring(cleanEduLine.indexOf(degreeMatch[0]) + degreeMatch[0].length);
+                  if (afterDegree.length > 3) {
+                    field = afterDegree.replace(/in\s+/i, '').trim();
+                  }
+                }
+                
                 result.education!.push({
-                  institution: cleanEduLine,
-                  degree: "Degree",
-                  field: "Field of Study",
+                  institution: institution,
+                  degree: degree,
+                  field: field,
                   startDate: "2016-01-01",
                   endDate: "2020-12-31",
                   gpa: "",
