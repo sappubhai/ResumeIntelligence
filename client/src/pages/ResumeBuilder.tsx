@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { apiRequest } from "@/lib/queryClient";
 import Header from "@/components/Header";
-import ResumeForm from "@/components/ResumeForm";
+import AccordionResumeForm from "@/components/AccordionResumeForm";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Save, Download, Eye } from "lucide-react";
 import type { Resume, InsertResume } from "@shared/schema";
@@ -221,7 +221,7 @@ export default function ResumeBuilder() {
 
       {/* Resume Form */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <ResumeForm
+        <AccordionResumeForm
           initialData={resume}
           onSave={handleSave}
           onDataChange={(hasChanges) => setHasUnsavedChanges(hasChanges)}

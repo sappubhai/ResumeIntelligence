@@ -39,8 +39,14 @@ export async function parseResumeFile(buffer: Buffer, mimetype: string): Promise
       throw new Error('No text content found in the uploaded file.');
     }
 
+    // Log the extracted text for debugging
+    console.log('Extracted text length:', textContent.length);
+    console.log('First 500 characters:', textContent.substring(0, 500));
+    
     // Use AI to parse the extracted text
     const parsedData = await parseResumeWithAI(textContent);
+    
+    console.log('Parsed data:', JSON.stringify(parsedData, null, 2));
     
     return parsedData;
   } catch (error) {
