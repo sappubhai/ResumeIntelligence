@@ -327,8 +327,10 @@ export default function AccordionResumeForm({
 
   // Update form when initialData changes (after resume parsing)
   useEffect(() => {
+    console.log("AccordionResumeForm - initialData received:", initialData);
     if (initialData) {
-      form.reset({
+      // Map parsed data to form structure with proper field mapping
+      const formData = {
         title: initialData.title || "",
         fullName: initialData.fullName || "",
         professionalTitle: initialData.professionalTitle || "",
@@ -338,20 +340,116 @@ export default function AccordionResumeForm({
         linkedinId: initialData.linkedinId || "",
         summary: initialData.summary || "",
         careerHighlights: initialData.careerHighlights || "",
-        skills: initialData.skills || [],
-        education: initialData.education || [],
-        workExperience: initialData.workExperience || [],
-        internships: initialData.internships || [],
-        certifications: initialData.certifications || [],
+        
+        // Skills - ensure proper structure with IDs
+        skills: (initialData.skills || []).map((skill: any, index: number) => ({
+          id: skill.id || `skill-${index}`,
+          name: skill.name || "",
+          rating: skill.rating || 0,
+          category: skill.category || "Technical"
+        })),
+        
+        // Education - ensure proper structure with IDs
+        education: (initialData.education || []).map((edu: any, index: number) => ({
+          id: edu.id || `edu-${index}`,
+          institution: edu.institution || "",
+          board: edu.board || "",
+          degree: edu.degree || "",
+          field: edu.field || "",
+          startDate: edu.startDate || "",
+          endDate: edu.endDate || "",
+          status: edu.status || "Completed",
+          scoreType: edu.scoreType || "Percentage",
+          score: edu.score || "",
+          division: edu.division || "",
+          country: edu.country || "",
+          state: edu.state || "",
+          city: edu.city || "",
+          description: edu.description || ""
+        })),
+        
+        // Work Experience - ensure proper structure with IDs
+        workExperience: (initialData.workExperience || []).map((work: any, index: number) => ({
+          id: work.id || `work-${index}`,
+          company: work.company || "",
+          position: work.position || "",
+          startDate: work.startDate || "",
+          endDate: work.endDate || "",
+          isCurrent: work.isCurrent || false,
+          description: work.description || "",
+          location: work.location || "",
+          country: work.country || "",
+          state: work.state || "",
+          city: work.city || ""
+        })),
+        
+        // Internships - ensure proper structure with IDs
+        internships: (initialData.internships || []).map((intern: any, index: number) => ({
+          id: intern.id || `intern-${index}`,
+          company: intern.company || "",
+          position: intern.position || "",
+          startDate: intern.startDate || "",
+          endDate: intern.endDate || "",
+          isCurrent: intern.isCurrent || false,
+          description: intern.description || "",
+          country: intern.country || "",
+          state: intern.state || "",
+          city: intern.city || ""
+        })),
+        
+        // Certifications - ensure proper structure with IDs
+        certifications: (initialData.certifications || []).map((cert: any, index: number) => ({
+          id: cert.id || `cert-${index}`,
+          name: cert.name || "",
+          issuer: cert.issuer || "",
+          status: cert.status || "Completed",
+          issueDate: cert.issueDate || "",
+          expiryDate: cert.expiryDate || ""
+        })),
+        
+        // Projects - ensure proper structure with IDs
+        projects: (initialData.projects || []).map((project: any, index: number) => ({
+          id: project.id || `project-${index}`,
+          name: project.name || "",
+          description: project.description || "",
+          technologies: project.technologies || [],
+          startDate: project.startDate || "",
+          endDate: project.endDate || "",
+          url: project.url || ""
+        })),
+        
+        // Languages - ensure proper structure with IDs
+        languages: (initialData.languages || []).map((lang: any, index: number) => ({
+          id: lang.id || `lang-${index}`,
+          name: lang.name || "",
+          rating: lang.rating || 0
+        })),
+        
+        // References - ensure proper structure with IDs
+        references: (initialData.references || []).map((ref: any, index: number) => ({
+          id: ref.id || `ref-${index}`,
+          name: ref.name || "",
+          position: ref.position || "",
+          company: ref.company || "",
+          country: ref.country || "",
+          state: ref.state || "",
+          city: ref.city || "",
+          mobile: ref.mobile || "",
+          email: ref.email || ""
+        })),
+        
+        // Simple string fields
         awardsAndHonors: initialData.awardsAndHonors || "",
         professionalAffiliations: initialData.professionalAffiliations || "",
-        projects: initialData.projects || [],
         extraCurricularActivities: initialData.extraCurricularActivities || "",
-        languages: initialData.languages || [],
-        personalInfo: initialData.personalInfo || {},
         personalInterests: initialData.personalInterests || "",
-        references: initialData.references || [],
-      });
+        
+        // Personal info object
+        personalInfo: initialData.personalInfo || {}
+      };
+      
+      console.log("Resetting form with data:", formData);
+      form.reset(formData);
     }
   }, [initialData, form]);
 
