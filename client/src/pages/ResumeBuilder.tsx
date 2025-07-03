@@ -35,10 +35,13 @@ export default function ResumeBuilder() {
 
   const isEditing = !!resumeId;
 
-  const { data: resume, isLoading: resumeLoading } = useQuery({
-    queryKey: ["/api/resumes", resumeId],
+  const { data: resumeData, isLoading: resumeLoading } = useQuery({
+    queryKey: [`/api/resumes/${resumeId}`],
     enabled: !!user && isEditing,
   });
+
+  // Ensure we have a single resume object, not an array
+  const resume = Array.isArray(resumeData) ? resumeData[0] : resumeData;
 
   const saveMutation = useMutation({
     mutationFn: async (data: Partial<InsertResume>) => {
@@ -82,13 +85,24 @@ export default function ResumeBuilder() {
       let errorMessage = "Failed to save resume";
       if (error instanceof Error) {
         try {
-          const errorData = JSON.parse(error.message);
-          if (errorData.errors && Array.isArray(errorData.errors)) {
-            errorMessage = `Validation errors: ${errorData.errors.map((e: any) => e.message || e.path?.join('.') + ': ' + e.message).join(', ')}`;
+          // Parse the error message which contains "status: response_text"
+          const errorText = error.message;
+          if (errorText.includes(':')) {
+            const responsePart = errorText.split(':', 2)[1].trim();
+            const errorData = JSON.parse(responsePart);
+            if (errorData.errors && Array.isArray(errorData.errors)) {
+              errorMessage = `Validation errors: ${errorData.errors.map((e: any) => {
+                const path = e.path ? e.path.join('.') : 'unknown field';
+                return `${path}: ${e.message}`;
+              }).join(', ')}`;
+            } else {
+              errorMessage = errorData.message || errorText;
+            }
           } else {
-            errorMessage = errorData.message || error.message;
+            errorMessage = errorText;
           }
-        } catch {
+        } catch (parseError) {
+          console.error("Error parsing error message:", parseError);
           errorMessage = error.message;
         }
       }
@@ -160,6 +174,15 @@ export default function ResumeBuilder() {
     setLocation("/");
   };
 
+  const handleTopSave = () => {
+    // Show toast to use the bottom save button for now
+    toast({
+      title: "Use Bottom Save Button",
+      description: "Please use the 'Save Resume' button at the bottom of the form to save your changes.",
+      variant: "default",
+    });
+  };
+
   if (authLoading || !user) {
     return <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
       <div className="text-center">
@@ -225,7 +248,7 @@ export default function ResumeBuilder() {
               </Button>
               
               <Button
-                onClick={() => handleSave(resume as any || {})}
+                onClick={handleTopSave}
                 disabled={saveMutation.isPending}
               >
                 <Save className="mr-2 w-4 h-4" />

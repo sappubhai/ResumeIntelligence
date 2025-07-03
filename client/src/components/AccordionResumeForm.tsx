@@ -1335,7 +1335,16 @@ export default function AccordionResumeForm({
                 <Button type="button" variant="outline">
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading} className="bg-teal-600 hover:bg-teal-700">
+                <Button 
+                  type="submit" 
+                  disabled={isLoading} 
+                  className="bg-teal-600 hover:bg-teal-700"
+                  onClick={() => {
+                    console.log("Bottom save button clicked!");
+                    console.log("Form errors:", form.formState.errors);
+                    console.log("Form is valid:", form.formState.isValid);
+                  }}
+                >
                   {isLoading ? "Saving..." : "Save Resume"}
                 </Button>
               </div>
