@@ -456,6 +456,38 @@ export default function TemplateBuilder() {
     }));
   };
 
+  const addCustomSection = () => {
+    const newSection: TemplateSection = {
+      id: Date.now().toString(),
+      type: 'custom',
+      title: 'Custom Section',
+      content: {},
+      fields: {
+        customField1: { enabled: true, label: 'Custom Field 1', type: 'text' }
+      },
+      style: {
+        padding: 16,
+        fontSize: 'base'
+      },
+      location: 'main'
+    };
+    
+    setPageLayout(prev => ({
+      ...prev,
+      mainSections: [...prev.mainSections, newSection]
+    }));
+  };
+
+  const addCustomField = (sectionId: string) => {
+    const fieldKey = `customField${Date.now()}`;
+    updateSection(sectionId, {
+      fields: {
+        ...currentSection?.fields,
+        [fieldKey]: { enabled: true, label: `Custom Field ${Object.keys(currentSection?.fields || {}).length + 1}`, type: 'text' }
+      }
+    });
+  };
+
   const currentSection = getAllSections().find(s => s.id === selectedSection);
 
   const saveMutation = useMutation({
@@ -489,11 +521,180 @@ export default function TemplateBuilder() {
   });
 
   const generateTemplate = (sections: TemplateSection[]) => {
-    // Template generation logic would go here
-    return {
-      html: '<div class="resume-template">Generated Template</div>',
-      css: '.resume-template { font-family: Arial, sans-serif; }'
-    };
+    const css = `
+      .resume-template {
+        font-family: ${globalStyles.fontFamily}, sans-serif;
+        color: #333;
+        line-height: 1.6;
+        max-width: 8.5in;
+        margin: 0 auto;
+        padding: 0.5in;
+        background: white;
+      }
+      .template-header {
+        text-align: ${globalStyles.headerStyle === 'centered' ? 'center' : 'left'};
+        margin-bottom: 2rem;
+        padding: 1.5rem;
+        background: ${globalStyles.primaryColor}10;
+        border-radius: 8px;
+      }
+      .template-section {
+        margin-bottom: 1.5rem;
+        padding: 1rem;
+        border-radius: 6px;
+      }
+      .section-title {
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: ${globalStyles.primaryColor};
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid ${globalStyles.primaryColor};
+      }
+      .template-layout {
+        display: grid;
+        gap: 1.5rem;
+      }
+      .layout-single { grid-template-columns: 1fr; }
+      .layout-left-sidebar { grid-template-columns: 1fr 2fr; }
+      .layout-right-sidebar { grid-template-columns: 2fr 1fr; }
+      .sidebar { background: #f8f9fa; padding: 1rem; border-radius: 8px; }
+      .main-content { background: white; }
+      .grid-row { display: grid; gap: 1rem; margin-bottom: 1rem; }
+      .grid-col-1 { grid-template-columns: 1fr; }
+      .grid-col-2 { grid-template-columns: 1fr 1fr; }
+      .grid-col-3 { grid-template-columns: 1fr 1fr 1fr; }
+      .grid-col-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+      .grid-col-5 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+      .field-group { margin-bottom: 0.75rem; }
+      .field-label { font-weight: 600; color: #555; }
+      .field-value { color: #333; }
+      .contact-info { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: ${globalStyles.headerStyle === 'centered' ? 'center' : 'flex-start'}; }
+      .contact-item { display: flex; align-items: center; gap: 0.25rem; }
+      .photo-circle { border-radius: 50%; }
+      .photo-square { border-radius: 8px; }
+    `;
+
+    let html = '<div class="resume-template">';
+    
+    if (pageLayout.type === 'single') {
+      html += '<div class="template-layout layout-single">';
+      html += '<div class="main-content">';
+      pageLayout.mainSections.forEach(section => {
+        html += generateSectionHTML(section);
+      });
+      html += '</div></div>';
+    } else if (pageLayout.type === 'left-sidebar' || pageLayout.type === 'right-sidebar') {
+      html += `<div class="template-layout ${pageLayout.type === 'left-sidebar' ? 'layout-left-sidebar' : 'layout-right-sidebar'}">`;
+      
+      if (pageLayout.type === 'left-sidebar') {
+        html += '<div class="sidebar">';
+        pageLayout.sidebarSections.forEach(section => {
+          html += generateSectionHTML(section);
+        });
+        html += '</div>';
+      }
+      
+      html += '<div class="main-content">';
+      pageLayout.mainSections.forEach(section => {
+        html += generateSectionHTML(section);
+      });
+      html += '</div>';
+      
+      if (pageLayout.type === 'right-sidebar') {
+        html += '<div class="sidebar">';
+        pageLayout.sidebarSections.forEach(section => {
+          html += generateSectionHTML(section);
+        });
+        html += '</div>';
+      }
+      
+      html += '</div>';
+    } else if (pageLayout.type === 'grid') {
+      pageLayout.gridRows.forEach(row => {
+        html += `<div class="grid-row grid-col-${row.columns}">`;
+        for (let i = 0; i < row.columns; i++) {
+          html += '<div class="grid-column">';
+          (row.sections[i] || []).forEach(section => {
+            html += generateSectionHTML(section);
+          });
+          html += '</div>';
+        }
+        html += '</div>';
+      });
+    }
+    
+    html += '</div>';
+    
+    return { html, css };
+  };
+
+  const generateSectionHTML = (section: TemplateSection) => {
+    let sectionHTML = `<div class="template-section" style="`;
+    if (section.style.backgroundColor) sectionHTML += `background-color: ${section.style.backgroundColor}; `;
+    if (section.style.padding) sectionHTML += `padding: ${section.style.padding}px; `;
+    if (section.style.borderRadius) sectionHTML += `border-radius: ${section.style.borderRadius}px; `;
+    if (section.style.textAlign) sectionHTML += `text-align: ${section.style.textAlign}; `;
+    sectionHTML += '">';
+    
+    sectionHTML += `<h3 class="section-title">${section.title}</h3>`;
+    
+    // Generate sample data based on section type
+    if (section.type === 'header') {
+      sectionHTML += `
+        <div class="template-header">
+          <h1 style="margin: 0 0 0.5rem 0; font-size: 2rem;">John Doe</h1>
+          <h2 style="margin: 0 0 1rem 0; font-size: 1.25rem; color: #666;">Software Engineer</h2>
+          <div class="contact-info">
+            <span class="contact-item">📧 john.doe@email.com</span>
+            <span class="contact-item">📱 (555) 123-4567</span>
+            <span class="contact-item">📍 New York, NY</span>
+            <span class="contact-item">🔗 linkedin.com/in/johndoe</span>
+          </div>
+        </div>
+      `;
+    } else if (section.type === 'summary') {
+      sectionHTML += `
+        <p>Experienced software engineer with 5+ years of expertise in full-stack development. 
+        Passionate about creating scalable web applications and leading development teams.</p>
+      `;
+    } else if (section.type === 'experience') {
+      sectionHTML += `
+        <div class="field-group">
+          <h4 style="margin: 0 0 0.25rem 0;">Senior Software Engineer - TechCorp Inc.</h4>
+          <p style="margin: 0 0 0.5rem 0; color: #666; font-size: 0.9rem;">Jan 2022 - Present</p>
+          <p>Led development of microservices architecture serving 1M+ users. Mentored junior developers and improved deployment efficiency by 40%.</p>
+        </div>
+      `;
+    } else if (section.type === 'education') {
+      sectionHTML += `
+        <div class="field-group">
+          <h4 style="margin: 0 0 0.25rem 0;">Bachelor of Science in Computer Science</h4>
+          <p style="margin: 0 0 0.5rem 0; color: #666;">University of Technology - 2018</p>
+          <p>Relevant Coursework: Data Structures, Algorithms, Software Engineering</p>
+        </div>
+      `;
+    } else if (section.type === 'skills') {
+      sectionHTML += `
+        <div class="field-group">
+          <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+            <span style="background: ${globalStyles.primaryColor}20; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem;">JavaScript</span>
+            <span style="background: ${globalStyles.primaryColor}20; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem;">React</span>
+            <span style="background: ${globalStyles.primaryColor}20; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem;">Node.js</span>
+            <span style="background: ${globalStyles.primaryColor}20; padding: 0.25rem 0.75rem; border-radius: 1rem; font-size: 0.875rem;">Python</span>
+          </div>
+        </div>
+      `;
+    } else if (section.type === 'custom') {
+      sectionHTML += `
+        <div class="field-group">
+          <p>Custom section content - This section can be customized with any fields you define.</p>
+        </div>
+      `;
+    }
+    
+    sectionHTML += '</div>';
+    return sectionHTML;
   };
 
   if (authLoading || !user || user.role !== 'admin') {
@@ -525,11 +726,54 @@ export default function TemplateBuilder() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <Button variant="outline">
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    const allSections = getAllSections();
+                    const { html, css } = generateTemplate(allSections);
+                    const previewWindow = window.open('', '_blank');
+                    if (previewWindow) {
+                      previewWindow.document.write(`
+                        <!DOCTYPE html>
+                        <html>
+                          <head>
+                            <title>Template Preview</title>
+                            <style>${css}</style>
+                          </head>
+                          <body>${html}</body>
+                        </html>
+                      `);
+                      previewWindow.document.close();
+                    }
+                  }}
+                >
                   <Eye className="w-4 h-4 mr-2" />
                   Preview
                 </Button>
-                <Button variant="outline">
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    const allSections = getAllSections();
+                    const { html, css } = generateTemplate(allSections);
+                    const htmlContent = `<!DOCTYPE html>
+<html>
+<head>
+    <title>${templateName}</title>
+    <style>${css}</style>
+</head>
+<body>${html}</body>
+</html>`;
+                    const blob = new Blob([htmlContent], { type: 'text/html' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${templateName.replace(/\s+/g, '-').toLowerCase()}.html`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                  }}
+                >
                   <Download className="w-4 h-4 mr-2" />
                   Export HTML
                 </Button>
@@ -625,8 +869,8 @@ export default function TemplateBuilder() {
                   {pageLayout.type === 'grid' && (
                     <div className="space-y-2">
                       <Label>Add Row</Label>
-                      <div className="grid grid-cols-4 gap-2">
-                        {[1, 2, 3, 4].map(cols => (
+                      <div className="grid grid-cols-5 gap-2">
+                        {[1, 2, 3, 4, 5].map(cols => (
                           <Button
                             key={cols}
                             variant="outline"
@@ -667,6 +911,15 @@ export default function TemplateBuilder() {
                           {section.title}
                         </Button>
                       ))}
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start border-dashed border-2"
+                        onClick={addCustomSection}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Custom Section
+                      </Button>
+                      ))}
                     </TabsContent>
                     <TabsContent value="sidebar" className="space-y-2">
                       {availableSections.map((section) => (
@@ -680,6 +933,14 @@ export default function TemplateBuilder() {
                           {section.title}
                         </Button>
                       ))}
+                      <Button
+                        variant="outline"
+                        className="w-full justify-start border-dashed border-2"
+                        onClick={() => addCustomSection()}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Custom Section
+                      </Button>
                     </TabsContent>
                   </Tabs>
                 </CardContent>
@@ -888,10 +1149,38 @@ export default function TemplateBuilder() {
                                 <Label className="text-sm">{field.label}</Label>
                                 {field.required && <Badge variant="secondary" className="text-xs">Required</Badge>}
                               </div>
-                              <Badge variant="outline" className="text-xs">{field.type}</Badge>
+                              <div className="flex items-center gap-1">
+                                <Badge variant="outline" className="text-xs">{field.type}</Badge>
+                                {fieldKey.startsWith('customField') && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-red-600"
+                                    onClick={() => {
+                                      const newFields = { ...currentSection.fields };
+                                      delete newFields[fieldKey];
+                                      updateSection(currentSection.id, { fields: newFields });
+                                    }}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                           ))}
                         </div>
+                        
+                        {currentSection.type === 'custom' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => addCustomField(currentSection.id)}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Custom Field
+                          </Button>
+                        )}
                       </div>
 
                       <div className="space-y-2">

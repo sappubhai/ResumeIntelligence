@@ -406,21 +406,57 @@ export default function TemplateUpload() {
                   </div>
                   <div className="p-4 bg-gray-50 h-96 overflow-auto">
                     {activeTab === 'preview' ? (
-                      <div>
-                        <style dangerouslySetInnerHTML={{ __html: convertedTemplate.css }} />
-                        <div dangerouslySetInnerHTML={{ __html: convertedTemplate.html }} />
+                      <div className="bg-white p-4 rounded border">
+                        <iframe
+                          srcDoc={`
+                            <!DOCTYPE html>
+                            <html>
+                              <head>
+                                <style>${convertedTemplate.css}</style>
+                              </head>
+                              <body>
+                                ${convertedTemplate.html.replace(/\{\{(\w+)\}\}/g, (match, field) => {
+                                  const dummyData: Record<string, string> = {
+                                    fullName: 'John Doe',
+                                    professionalTitle: 'Software Engineer',
+                                    email: 'john.doe@email.com',
+                                    mobileNumber: '(555) 123-4567',
+                                    address: '123 Main St, New York, NY 10001',
+                                    linkedinId: 'linkedin.com/in/johndoe',
+                                    summary: 'Experienced software engineer with 5+ years of expertise in full-stack development.',
+                                    company: 'TechCorp Inc.',
+                                    position: 'Senior Software Engineer',
+                                    startDate: 'Jan 2022',
+                                    endDate: 'Present',
+                                    description: 'Led development of microservices architecture serving 1M+ users.',
+                                    institution: 'University of Technology',
+                                    degree: 'Bachelor of Science',
+                                    field: 'Computer Science'
+                                  };
+                                  return dummyData[field] || field;
+                                })}
+                              </body>
+                            </html>
+                          `}
+                          className="w-full h-80 border-0"
+                          title="Template Preview"
+                        />
                       </div>
                     ) : (
-                      <pre className="text-sm text-gray-800 whitespace-pre-wrap">
-                        <div className="mb-4">
+                      <div className="space-y-4">
+                        <div>
                           <h4 className="font-medium text-gray-900 mb-2">HTML:</h4>
-                          <code className="block bg-gray-100 p-2 rounded">{convertedTemplate.html}</code>
+                          <div className="bg-gray-100 p-3 rounded max-h-40 overflow-auto">
+                            <pre className="text-sm text-gray-800 whitespace-pre-wrap">{convertedTemplate.html}</pre>
+                          </div>
                         </div>
                         <div>
                           <h4 className="font-medium text-gray-900 mb-2">CSS:</h4>
-                          <code className="block bg-gray-100 p-2 rounded">{convertedTemplate.css}</code>
+                          <div className="bg-gray-100 p-3 rounded max-h-40 overflow-auto">
+                            <pre className="text-sm text-gray-800 whitespace-pre-wrap">{convertedTemplate.css}</pre>
+                          </div>
                         </div>
-                      </pre>
+                      </div>
                     )}
                   </div>
                 </div>

@@ -1,4 +1,3 @@
-
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import mammoth from 'mammoth';
@@ -57,14 +56,14 @@ async function extractFromPDF(buffer: Buffer) {
   const typedArray = new Uint8Array(buffer);
   const loadingTask = pdfjsLib.getDocument({ data: typedArray });
   const pdf = await loadingTask.promise;
-  
+
   let fullText = '';
   let structuralInfo = '';
-  
+
   for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
     const page = await pdf.getPage(pageNum);
     const textContent = await page.getTextContent();
-    
+
     // Extract text with position info for structure analysis
     const textItems = textContent.items.map((item: any) => ({
       text: item.str,
@@ -74,26 +73,26 @@ async function extractFromPDF(buffer: Buffer) {
       height: item.height,
       fontSize: item.height
     }));
-    
+
     // Analyze structure based on positioning and font sizes
     const pageText = textItems.map(item => item.text).join(' ');
     fullText += pageText + '\n';
-    
+
     // Identify headers by font size and position
     const headers = textItems.filter(item => item.fontSize > 14);
     structuralInfo += `Page ${pageNum} headers: ${headers.map(h => h.text).join(', ')}\n`;
   }
-  
+
   return { text: fullText, structure: structuralInfo };
 }
 
 async function extractFromWord(buffer: Buffer) {
   const result = await mammoth.extractRawText({ buffer });
   const htmlResult = await mammoth.convertToHtml({ buffer });
-  
+
   // Extract structure from HTML
   const structuralInfo = extractWordStructure(htmlResult.value);
-  
+
   return { 
     text: result.value, 
     structure: structuralInfo 
@@ -103,10 +102,10 @@ async function extractFromWord(buffer: Buffer) {
 function extractWordStructure(html: string): string {
   const headerMatches = html.match(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi) || [];
   const headers = headerMatches.map(match => match.replace(/<[^>]*>/g, ''));
-  
+
   const strongMatches = html.match(/<strong[^>]*>(.*?)<\/strong>/gi) || [];
   const boldText = strongMatches.map(match => match.replace(/<[^>]*>/g, ''));
-  
+
   return `Headers: ${headers.join(', ')}\nBold text: ${boldText.join(', ')}`;
 }
 
@@ -154,7 +153,7 @@ Focus on:
 
   const result = await model.generateContent(prompt);
   const response = result.response.text();
-  
+
   try {
     const cleanResponse = response.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(cleanResponse);
@@ -187,14 +186,14 @@ function generateFallbackHTML(): string {
           </div>
         </div>
       </header>
-      
+
       {{#if summary}}
       <section class="summary-section">
         <h3>Professional Summary</h3>
         <p>{{summary}}</p>
       </section>
       {{/if}}
-      
+
       {{#if workExperience}}
       <section class="experience-section">
         <h3>Work Experience</h3>
@@ -207,7 +206,7 @@ function generateFallbackHTML(): string {
         {{/each}}
       </section>
       {{/if}}
-      
+
       {{#if education}}
       <section class="education-section">
         <h3>Education</h3>
@@ -220,7 +219,7 @@ function generateFallbackHTML(): string {
         {{/each}}
       </section>
       {{/if}}
-      
+
       {{#if skills}}
       <section class="skills-section">
         <h3>Skills</h3>
@@ -243,127 +242,161 @@ function generateFallbackHTML(): string {
 function generateFallbackCSS(): string {
   return `
     .resume-template {
-      font-family: 'Arial', sans-serif;
-      max-width: 800px;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 8.5in;
       margin: 0 auto;
-      padding: 40px;
-      line-height: 1.6;
+      padding: 0.5in;
       color: #333;
-      background: #fff;
+      line-height: 1.6;
+      background: white;
     }
-    
+
     .resume-header {
       text-align: center;
-      margin-bottom: 40px;
-      padding-bottom: 20px;
-      border-bottom: 2px solid #2563eb;
+      margin-bottom: 2rem;
+      padding: 2rem 1.5rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     }
-    
+
     .full-name {
-      font-size: 2.5em;
-      font-weight: bold;
-      margin: 0 0 10px 0;
-      color: #1e40af;
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin: 0 0 0.5rem 0;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
     }
-    
+
     .professional-title {
-      font-size: 1.4em;
-      color: #64748b;
-      margin: 0 0 20px 0;
-      font-weight: normal;
+      font-size: 1.4rem;
+      margin: 0 0 1.5rem 0;
+      opacity: 0.9;
+      font-weight: 300;
     }
-    
+
     .contact-info {
       display: flex;
       justify-content: center;
-      gap: 20px;
       flex-wrap: wrap;
-      font-size: 0.95em;
+      gap: 1.5rem;
+      font-size: 0.95rem;
     }
-    
+
     .contact-info span {
-      padding: 5px 0;
-    }
-    
-    .resume-template section {
-      margin-bottom: 35px;
-    }
-    
-    .resume-template h3 {
-      font-size: 1.4em;
-      color: #1e40af;
-      margin-bottom: 20px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid #e2e8f0;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    
-    .experience-item, .education-item {
-      margin-bottom: 25px;
-    }
-    
-    .experience-item h4, .education-item h4 {
-      font-size: 1.1em;
-      margin: 0 0 5px 0;
-      color: #374151;
-    }
-    
-    .date-range {
-      font-style: italic;
-      color: #6b7280;
-      margin: 0 0 10px 0;
-      font-size: 0.9em;
-    }
-    
-    .description {
-      margin: 10px 0;
-      text-align: justify;
-    }
-    
-    .institution {
-      color: #6b7280;
-      margin: 0 0 5px 0;
-    }
-    
-    .skills-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 15px;
-    }
-    
-    .skill-item {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 8px 0;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
     }
-    
-    .skill-name {
+
+    .summary-section,
+    .experience-section,
+    .education-section,
+    .skills-section {
+      margin-bottom: 2.5rem;
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      border-left: 4px solid #667eea;
+    }
+
+    .summary-section h3,
+    .experience-section h3,
+    .education-section h3,
+    .skills-section h3 {
+      font-size: 1.4rem;
+      color: #2c3e50;
+      margin: 0 0 1.5rem 0;
+      font-weight: 600;
+      position: relative;
+      padding-bottom: 0.75rem;
+    }
+
+    .summary-section h3:after,
+    .experience-section h3:after,
+    .education-section h3:after,
+    .skills-section h3:after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 50px;
+      height: 3px;
+      background: linear-gradient(90deg, #667eea, #764ba2);
+      border-radius: 2px;
+    }
+
+    .experience-item,
+    .education-item {
+      margin-bottom: 1.5rem;
+      padding: 1.25rem;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 3px solid #667eea;
+      transition: transform 0.2s ease;
+    }
+
+    .experience-item:hover,
+    .education-item:hover {
+      transform: translateX(5px);
+    }
+
+    .experience-item h4,
+    .education-item h4 {
+      margin: 0 0 0.5rem 0;
+      color: #2c3e50;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+
+    .date-range {
+      color: #667eea;
+      font-size: 0.9rem;
+      margin: 0 0 0.75rem 0;
       font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
-    
-    .skill-rating {
-      color: #fbbf24;
-      font-size: 1.1em;
+
+    .description {
+      color: #555;
+      margin: 0;
+      line-height: 1.6;
     }
-    
-    @media (max-width: 768px) {
+
+    .skills-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .skill-item {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 25px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+      transition: transform 0.2s ease;
+    }
+
+    .skill-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+    }
+
+    @media print {
       .resume-template {
-        padding: 20px;
+        padding: 0.25in;
       }
-      
-      .contact-info {
-        flex-direction: column;
-        gap: 10px;
-      }
-      
-      .full-name {
-        font-size: 2em;
-      }
-      
-      .skills-grid {
-        grid-template-columns: 1fr;
+      .resume-header {
+        background: #667eea !important;
+        -webkit-print-color-adjust: exact;
       }
     }
   `;
