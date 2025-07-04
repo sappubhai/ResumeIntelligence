@@ -583,50 +583,35 @@ export default function Dashboard() {
             <p className="text-neutral-600">Select a template for your resume download</p>
           </DialogHeader>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-h-96 overflow-y-auto">
+          <div className="grid gap-4 grid-cols-4 max-h-96 overflow-y-auto">
             {templates.map((template: Template, index: number) => (
               <div
                 key={template.id}
-                className="border border-neutral-200 rounded-lg p-4 hover:shadow-md hover:border-primary transition-all cursor-pointer group"
+                className="border border-neutral-200 rounded-lg p-3 hover:shadow-md hover:border-primary transition-all cursor-pointer group"
+                onClick={() => handleTemplateSelect(template.id)}
               >
-                {/* Real Template Preview */}
-                <div className="mb-3 bg-white border rounded-lg overflow-hidden">
+                {/* A4 Proportioned Template Preview */}
+                <div className="mb-2 bg-white border rounded overflow-hidden" style={{ aspectRatio: '210/297' }}>
                   <iframe
                     src={`/api/resumes/${selectedResumeForDownload}/preview?templateId=${template.id}`}
-                    className="w-full h-48 border-0 pointer-events-none"
+                    className="w-full h-full border-0 pointer-events-none"
                     title={`${template.name} Preview`}
                     style={{ 
-                      transform: 'scale(0.25)', 
+                      transform: 'scale(0.2)', 
                       transformOrigin: 'top left',
-                      width: '400%',
-                      height: '800px'
+                      width: '500%',
+                      height: '500%'
                     }}
                   />
                 </div>
 
-                <div className="mt-3">
-                  <h4 className="font-medium text-neutral-800 mb-1">
+                <div>
+                  <h4 className="font-medium text-neutral-800 text-sm mb-1">
                     {template.name}
                   </h4>
-                  <p className="text-xs text-neutral-500 mb-2">
+                  <p className="text-xs text-neutral-500">
                     {template.category}
                   </p>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleTemplateSelect(template.id)}
-                    >
-                      Select
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleTemplatePreview(template.id)}
-                    >
-                      Preview
-                    </Button>
-                  </div>
                 </div>
               </div>
             ))}

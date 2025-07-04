@@ -21,22 +21,22 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
   createUser(user: { email: string; password: string; name: string }): Promise<User>;
-  
+
   // Session store
   sessionStore: session.Store;
-  
+
   // Resume operations
   getUserResumes(userId: number): Promise<Resume[]>;
   getResume(id: number): Promise<Resume | undefined>;
   createResume(resume: InsertResume): Promise<Resume>;
   updateResume(id: number, resume: Partial<InsertResume>): Promise<Resume>;
   deleteResume(id: number): Promise<void>;
-  
+
   // Template operations
   getTemplates(): Promise<Template[]>;
   getTemplate(id: number): Promise<Template | undefined>;
   createTemplate(template: InsertTemplate): Promise<Template>;
-  
+
   // Admin operations
   getAllUsers(): Promise<User[]>;
   updateUser(id: number, updates: Partial<User>): Promise<User>;
@@ -128,7 +128,18 @@ export class DatabaseStorage implements IStorage {
 
   async getTemplate(id: number): Promise<Template | undefined> {
     const [template] = await db.select().from(templates).where(eq(templates.id, id));
-    return template || undefined;
+    
+    if (!template) {
+      return undefined;
+    }
+
+    // Add template validation
+    if (!template.htmlTemplate || !template.cssStyles) {
+      console.warn(`Template ${id} is missing HTML or CSS!`);
+      return undefined;
+    }
+    
+    return template;
   }
 
   async createTemplate(template: InsertTemplate): Promise<Template> {
@@ -172,7 +183,7 @@ export class DatabaseStorage implements IStorage {
     const [resumesCount] = await db.select({ count: sql<number>`count(*)` }).from(resumes);
     const [downloadsCount] = await db.select({ count: sql<number>`count(*)` }).from(downloads);
     const [templatesCount] = await db.select({ count: sql<number>`count(*)` }).from(templates);
-    
+
     const recentActivity = await db
       .select({
         type: downloads.id,

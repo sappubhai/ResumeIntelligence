@@ -244,6 +244,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Generate HTML preview
+      console.log(`Preview request for resume ${resumeId} with template ${template.id} (${template.name})`);
+
       const htmlContent = await generateResumeHTML(resume, template);
 
       res.setHeader('Content-Type', 'text/html');

@@ -22,7 +22,7 @@ Handlebars.registerHelper('if', function(condition: any, options: any) {
 Handlebars.registerHelper('each', function(context: any[], options: any) {
   let ret = '';
   if (context && context.length > 0) {
-    for (let i = 0; i < context.length; i++) {
+    for (let i = 0; < context.length; i++) {
       ret += options.fn(context[i]);
     }
   }
@@ -31,6 +31,12 @@ Handlebars.registerHelper('each', function(context: any[], options: any) {
 
 export async function generateResumeHTML(resume: Resume, template: Template): Promise<string> {
   try {
+    // Use the template's HTML and CSS - ensure each template has unique styling
+    const templateHtml = template.htmlTemplate;
+    const templateCss = template.cssStyles;
+
+    console.log(`Generating preview for template: ${template.name} (ID: ${template.id})`);
+
     // Use the template's HTML and CSS
     let htmlTemplate = template.htmlTemplate;
     const cssStyles = template.cssStyles;
