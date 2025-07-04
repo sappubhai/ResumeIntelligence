@@ -31,89 +31,107 @@ Handlebars.registerHelper('each', function(context: any[], options: any) {
 
 export async function generateResumeHTML(resume: Resume, template: Template): Promise<string> {
   try {
-    // Compile the Handlebars template
-    const htmlTemplate = Handlebars.compile(template.htmlTemplate);
+    // Use the template's HTML and CSS
+    let htmlTemplate = template.htmlTemplate;
+    const cssStyles = template.cssStyles;
 
-    // Prepare data for template
-    const templateData = {
-      fullName: resume.fullName || '',
-      professionalTitle: resume.professionalTitle || '',
-      email: resume.email || '',
-      mobileNumber: resume.mobileNumber || '',
-      address: resume.address || '',
-      linkedinId: resume.linkedinId || '',
-      summary: resume.summary || '',
-      workExperience: resume.workExperience || [],
-      education: resume.education || [],
-      skills: resume.skills || [],
-      certifications: resume.certifications || [],
-      projects: resume.projects || [],
-      languages: resume.languages || [],
-      references: resume.references || [],
-      personalInfo: resume.personalInfo || {},
-    };
+    // Replace template variables with actual data
+    let html = htmlTemplate;
 
-    // Render the template with data
-    const html = htmlTemplate(templateData);
+    // Replace basic fields
+    html = html.replace(/\{\{fullName\}\}/g, resume.fullName || '');
+    html = html.replace(/\{\{professionalTitle\}\}/g, resume.professionalTitle || '');
+    html = html.replace(/\{\{email\}\}/g, resume.email || '');
+    html = html.replace(/\{\{mobileNumber\}\}/g, resume.mobileNumber || '');
+    html = html.replace(/\{\{address\}\}/g, resume.address || '');
+    html = html.replace(/\{\{summary\}\}/g, resume.summary || '');
 
-    return `
+    // Handle work experience array with proper Handlebars-style replacement
+    if (resume.workExperience && Array.isArray(resume.workExperience)) {
+      const experienceHtml = resume.workExperience.map(exp => {
+        let expHtml = `
+          <div class="job">
+            <h3>${exp.position || ''}</h3>
+            <p class="company">${exp.company || ''}</p>
+            <p class="dates">${exp.startDate || ''} - ${exp.endDate || 'Present'}</p>
+            <p>${exp.description || ''}</p>
+          </div>
+        `;
+
+        // If template has specific structure, try to match it
+        if (htmlTemplate.includes('{{position}} at {{company}}')) {
+          expHtml = `
+            <div class="job">
+              <h3>${exp.position || ''} at ${exp.company || ''}</h3>
+              <p class="dates">${exp.startDate || ''} - ${exp.endDate || 'Present'}</p>
+              <p>${exp.description || ''}</p>
+            </div>
+          `;
+        } else if (htmlTemplate.includes('company-location')) {
+          expHtml = `
+            <div class="job">
+              <h3>${exp.position || ''}</h3>
+              <p class="company-location">${exp.company || ''} | ${exp.startDate || ''} - ${exp.endDate || 'Present'}</p>
+              <p>${exp.description || ''}</p>
+            </div>
+          `;
+        }
+
+        return expHtml;
+      }).join('');
+
+      // Replace the handlebars-style loop with actual HTML
+      html = html.replace(/\{\{#each workExperience\}\}.*?\{\{\/each\}\}/gs, experienceHtml);
+    }
+
+    // Handle education if present
+    if (resume.education && Array.isArray(resume.education)) {
+      const educationHtml = resume.education.map(edu => {
+        return `
+          <div class="education-item">
+            <h3>${edu.degree || ''}</h3>
+            <p class="institution">${edu.institution || ''}</p>
+            <p class="dates">${edu.startDate || ''} - ${edu.endDate || 'Present'}</p>
+          </div>
+        `;
+      }).join('');
+
+      html = html.replace(/\{\{#each education\}\}.*?\{\{\/each\}\}/gs, educationHtml);
+    }
+
+    // Handle skills if present
+    if (resume.skills && Array.isArray(resume.skills)) {
+      const skillsHtml = resume.skills.map(skill => {
+        return `<span class="skill">${skill.name || skill}</span>`;
+      }).join(', ');
+
+      html = html.replace(/\{\{skills\}\}/g, skillsHtml);
+    }
+
+    // Combine HTML with CSS
+    const fullHtml = `
       <!DOCTYPE html>
       <html>
         <head>
-          <meta charset="utf-8">
-          <style>${template.cssStyles}</style>
+          <meta charset="UTF-8">
+          <title>${resume.title || 'Resume'}</title>
+          <style>
+            ${cssStyles}
+            body { margin: 0; padding: 0; }
+            * { box-sizing: border-box; }
+          </style>
         </head>
         <body>
           ${html}
         </body>
       </html>
     `;
+
+    return fullHtml;
   } catch (error) {
-    console.error('Error rendering template:', error);
-    // Fallback to simple replacement
-    return generateFallbackHTML(resume, template);
+    console.error('Error generating resume HTML:', error);
+    throw error;
   }
-}
-
-function generateFallbackHTML(resume: Resume, template: Template): string {
-  let html = template.htmlTemplate;
-  let css = template.cssStyles;
-
-  // Replace placeholders with actual data
-  const replacements: Record<string, string> = {
-    '{{fullName}}': resume.fullName || '',
-    '{{professionalTitle}}': resume.professionalTitle || '',
-    '{{email}}': resume.email || '',
-    '{{mobileNumber}}': resume.mobileNumber || '',
-    '{{address}}': resume.address || '',
-    '{{linkedinId}}': resume.linkedinId || '',
-    '{{summary}}': resume.summary || '',
-    '{{workExperience}}': formatWorkExperience(resume.workExperience || []),
-    '{{education}}': formatEducation(resume.education || []),
-    '{{skills}}': formatSkills(resume.skills || []),
-    '{{certifications}}': formatCertifications(resume.certifications || []),
-    '{{projects}}': formatProjects(resume.projects || []),
-    '{{languages}}': formatLanguages(resume.languages || []),
-    '{{references}}': formatReferences(resume.references || []),
-  };
-
-  // Replace all placeholders
-  Object.entries(replacements).forEach(([placeholder, value]) => {
-    html = html.replace(new RegExp(placeholder, 'g'), value);
-  });
-
-  return `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta charset="utf-8">
-        <style>${css}</style>
-      </head>
-      <body>
-        ${html}
-      </body>
-    </html>
-  `;
 }
 
 export async function generateResumePDF(resume: Resume, template: Template): Promise<Buffer> {

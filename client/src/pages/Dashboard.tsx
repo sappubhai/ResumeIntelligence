@@ -588,26 +588,45 @@ export default function Dashboard() {
               <div
                 key={template.id}
                 className="border border-neutral-200 rounded-lg p-4 hover:shadow-md hover:border-primary transition-all cursor-pointer group"
-                onClick={() => handleTemplateSelect(template.id)}
               >
-                <TemplatePreview 
-                  template={{
-                    id: template.id,
-                    name: template.name,
-                    description: template.description || undefined,
-                    category: template.category
-                  }}
-                  colorIndex={index % 4}
-                  compact={false}
-                />
+                {/* Real Template Preview */}
+                <div className="mb-3 bg-white border rounded-lg overflow-hidden">
+                  <iframe
+                    src={`/api/resumes/${selectedResumeForDownload}/preview?templateId=${template.id}`}
+                    className="w-full h-48 border-0 pointer-events-none"
+                    title={`${template.name} Preview`}
+                    style={{ 
+                      transform: 'scale(0.25)', 
+                      transformOrigin: 'top left',
+                      width: '400%',
+                      height: '800px'
+                    }}
+                  />
+                </div>
 
                 <div className="mt-3">
                   <h4 className="font-medium text-neutral-800 mb-1">
                     {template.name}
                   </h4>
-                  <p className="text-xs text-neutral-500">
+                  <p className="text-xs text-neutral-500 mb-2">
                     {template.category}
                   </p>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleTemplateSelect(template.id)}
+                    >
+                      Select
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleTemplatePreview(template.id)}
+                    >
+                      Preview
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}

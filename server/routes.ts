@@ -423,6 +423,216 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create sample templates for testing
+  app.post('/api/admin/templates/create-samples', isAdmin, async (req, res) => {
+    try {
+      const sampleTemplates = [
+        {
+          name: "Classic Professional",
+          description: "A clean, traditional resume template",
+          category: "professional",
+          htmlTemplate: `
+            <div class="resume-container">
+              <header class="resume-header">
+                <h1 class="name">{{fullName}}</h1>
+                <p class="title">{{professionalTitle}}</p>
+                <div class="contact-info">
+                  <p>{{email}} | {{mobileNumber}}</p>
+                  <p>{{address}}</p>
+                </div>
+              </header>
+              <section class="summary">
+                <h2>Professional Summary</h2>
+                <p>{{summary}}</p>
+              </section>
+              <section class="experience">
+                <h2>Work Experience</h2>
+                {{#each workExperience}}
+                <div class="job">
+                  <h3>{{position}} at {{company}}</h3>
+                  <p class="dates">{{startDate}} - {{endDate}}</p>
+                  <p>{{description}}</p>
+                </div>
+                {{/each}}
+              </section>
+            </div>
+          `,
+          cssStyles: `
+            .resume-container { font-family: 'Times New Roman', serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+            .resume-header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; }
+            .name { font-size: 24px; font-weight: bold; margin: 0; }
+            .title { font-size: 16px; font-style: italic; margin: 5px 0; }
+            .contact-info { font-size: 12px; }
+            h2 { color: #000; border-bottom: 1px solid #ccc; padding-bottom: 5px; }
+            .job { margin-bottom: 15px; }
+            .dates { font-style: italic; font-size: 12px; }
+          `
+        },
+        {
+          name: "Modern Creative",
+          description: "A colorful, modern design for creative professionals",
+          category: "creative",
+          htmlTemplate: `
+            <div class="resume-container">
+              <aside class="sidebar">
+                <h1 class="name">{{fullName}}</h1>
+                <p class="title">{{professionalTitle}}</p>
+                <div class="contact">
+                  <p>{{email}}</p>
+                  <p>{{mobileNumber}}</p>
+                  <p>{{address}}</p>
+                </div>
+              </aside>
+              <main class="main-content">
+                <section class="summary">
+                  <h2>About Me</h2>
+                  <p>{{summary}}</p>
+                </section>
+                <section class="experience">
+                  <h2>Experience</h2>
+                  {{#each workExperience}}
+                  <div class="job">
+                    <h3>{{position}}</h3>
+                    <p class="company">{{company}}</p>
+                    <p class="dates">{{startDate}} - {{endDate}}</p>
+                    <p>{{description}}</p>
+                  </div>
+                  {{/each}}
+                </section>
+              </main>
+            </div>
+          `,
+          cssStyles: `
+            .resume-container { display: flex; font-family: 'Arial', sans-serif; max-width: 800px; margin: 0 auto; }
+            .sidebar { width: 250px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px 20px; }
+            .name { font-size: 22px; font-weight: bold; margin: 0 0 10px 0; }
+            .title { font-size: 14px; opacity: 0.9; margin-bottom: 20px; }
+            .contact p { font-size: 12px; margin: 5px 0; }
+            .main-content { flex: 1; padding: 30px; }
+            h2 { color: #667eea; font-size: 18px; margin-bottom: 15px; }
+            .job { margin-bottom: 20px; }
+            .company { font-weight: bold; color: #764ba2; }
+            .dates { font-size: 12px; color: #666; }
+          `
+        },
+        {
+          name: "Minimalist Clean",
+          description: "A simple, clean design focusing on content",
+          category: "modern",
+          htmlTemplate: `
+            <div class="resume-container">
+              <header class="header">
+                <h1 class="name">{{fullName}}</h1>
+                <p class="title">{{professionalTitle}}</p>
+                <div class="contact">
+                  <span>{{email}}</span> • <span>{{mobileNumber}}</span> • <span>{{address}}</span>
+                </div>
+              </header>
+              <section class="summary">
+                <p>{{summary}}</p>
+              </section>
+              <section class="experience">
+                <h2>Experience</h2>
+                {{#each workExperience}}
+                <div class="job">
+                  <div class="job-header">
+                    <h3>{{position}}</h3>
+                    <span class="dates">{{startDate}} - {{endDate}}</span>
+                  </div>
+                  <p class="company">{{company}}</p>
+                  <p>{{description}}</p>
+                </div>
+                {{/each}}
+              </section>
+            </div>
+          `,
+          cssStyles: `
+            .resume-container { font-family: 'Arial', sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; line-height: 1.6; }
+            .header { text-align: center; margin-bottom: 40px; }
+            .name { font-size: 28px; font-weight: 300; margin: 0; color: #333; }
+            .title { font-size: 16px; color: #666; margin: 10px 0; }
+            .contact { font-size: 14px; color: #666; }
+            .summary { margin-bottom: 30px; }
+            h2 { font-size: 20px; font-weight: 300; color: #333; margin-bottom: 20px; }
+            .job { margin-bottom: 25px; }
+            .job-header { display: flex; justify-content: space-between; align-items: baseline; }
+            .job-header h3 { margin: 0; font-size: 16px; }
+            .dates { font-size: 12px; color: #666; }
+            .company { font-size: 14px; color: #666; margin: 5px 0; }
+          `
+        },
+        {
+          name: "Executive Professional",
+          description: "A sophisticated template for senior executives",
+          category: "professional",
+          htmlTemplate: `
+            <div class="resume-container">
+              <header class="header">
+                <div class="name-title">
+                  <h1 class="name">{{fullName}}</h1>
+                  <p class="title">{{professionalTitle}}</p>
+                </div>
+                <div class="contact">
+                  <p>{{email}}</p>
+                  <p>{{mobileNumber}}</p>
+                  <p>{{address}}</p>
+                </div>
+              </header>
+              <section class="summary">
+                <h2>Executive Summary</h2>
+                <p>{{summary}}</p>
+              </section>
+              <section class="experience">
+                <h2>Professional Experience</h2>
+                {{#each workExperience}}
+                <div class="job">
+                  <h3>{{position}}</h3>
+                  <p class="company-location">{{company}} | {{startDate}} - {{endDate}}</p>
+                  <p>{{description}}</p>
+                </div>
+                {{/each}}
+              </section>
+            </div>
+          `,
+          cssStyles: `
+            .resume-container { font-family: 'Georgia', serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+            .header { display: flex; justify-content: space-between; align-items: start; border-bottom: 3px solid #2c3e50; padding-bottom: 20px; margin-bottom: 30px; }
+            .name { font-size: 26px; font-weight: bold; margin: 0; color: #2c3e50; }
+            .title { font-size: 16px; color: #34495e; margin: 5px 0; }
+            .contact { text-align: right; font-size: 14px; }
+            .contact p { margin: 3px 0; }
+            h2 { color: #2c3e50; font-size: 18px; margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+            .job { margin-bottom: 25px; }
+            .job h3 { margin: 0; font-size: 16px; color: #2c3e50; }
+            .company-location { font-style: italic; color: #7f8c8d; margin: 5px 0; }
+          `
+        }
+      ];
+
+      const createdTemplates = [];
+      for (const templateData of sampleTemplates) {
+        const template = await storage.createTemplate({
+          name: templateData.name,
+          description: templateData.description,
+          category: templateData.category,
+          htmlTemplate: templateData.htmlTemplate,
+          cssStyles: templateData.cssStyles,
+          previewImage: null,
+          isActive: true,
+        });
+        createdTemplates.push(template);
+      }
+
+      res.json({ 
+        message: "Sample templates created successfully", 
+        templates: createdTemplates 
+      });
+    } catch (error) {
+      console.error("Error creating sample templates:", error);
+      res.status(500).json({ message: "Failed to create sample templates" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
