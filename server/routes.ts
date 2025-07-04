@@ -92,7 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
       });
 
-      const resume = await storage.createResume(resumeData);
+      const resume = await await storage.createResume(resumeData);
       res.status(201).json(resume);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -216,16 +216,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // PDF generation
   // Preview resume as HTML
-  app.get("/api/resumes/:id/preview", isAuthenticated, async (req: any, res) => {
+  app.get('/api/resumes/:id/preview', isAuthenticated, async (req: any, res) => {
     try {
       const resumeId = parseInt(req.params.id);
       const userId = req.user.id;
-      const templateId = req.query.templateId ? parseInt(req.query.templateId as string) : undefined;
+      const templateId = req.query.templateId ? parseInt(req.query.templateId as string) : null;
 
-      if (isNaN(resumeId)) {
-        return res.status(400).json({ message: "Invalid resume ID" });
-      }
-
+      // Get resume and check ownership
       const resume = await storage.getResume(resumeId);
       if (!resume) {
         return res.status(404).json({ message: "Resume not found" });
@@ -234,21 +231,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
+      // Get template - use templateId from query if provided, otherwise use resume's template
       let template;
       if (templateId) {
         template = await storage.getTemplate(templateId);
-      } else if (resume.templateId) {
+      } else {
         template = await storage.getTemplate(resume.templateId);
       }
 
       if (!template) {
-        // Use a default template if none specified
-        const templates = await storage.getTemplates();
-        template = templates[0];
-      }
-
-      if (!template) {
-        return res.status(400).json({ message: "No template available" });
+        return res.status(404).json({ message: "Template not found" });
       }
 
       // Generate HTML preview

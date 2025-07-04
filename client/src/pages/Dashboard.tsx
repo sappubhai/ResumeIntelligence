@@ -188,8 +188,15 @@ export default function Dashboard() {
   const handleTemplateSelect = (templateId: number) => {
     if (selectedResumeForDownload) {
       setLocation(`/preview/${selectedResumeForDownload}?template=${templateId}`);
-      setShowTemplateModal(false);
-      setSelectedResumeForDownload(null);
+    }
+    setShowTemplateModal(false);
+    setSelectedResumeForDownload(null);
+  };
+
+  const handleTemplatePreview = (templateId: number) => {
+    if (selectedResumeForDownload) {
+      // Open preview in new tab to allow comparison
+      window.open(`/preview/${selectedResumeForDownload}?template=${templateId}`, '_blank');
     }
   };
 
@@ -575,7 +582,7 @@ export default function Dashboard() {
             <DialogTitle>Choose a Template</DialogTitle>
             <p className="text-neutral-600">Select a template for your resume download</p>
           </DialogHeader>
-          
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 max-h-96 overflow-y-auto">
             {templates.map((template: Template, index: number) => (
               <div
@@ -593,7 +600,7 @@ export default function Dashboard() {
                   colorIndex={index % 4}
                   compact={false}
                 />
-                
+
                 <div className="mt-3">
                   <h4 className="font-medium text-neutral-800 mb-1">
                     {template.name}
