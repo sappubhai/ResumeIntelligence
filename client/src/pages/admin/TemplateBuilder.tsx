@@ -759,7 +759,7 @@ export default function TemplateBuilder() {
           `).join('')}
         </div>
       `;
-    
+    }
 
     return { html, css };
   };
