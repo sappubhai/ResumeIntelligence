@@ -181,12 +181,35 @@ export default function TemplateUpload() {
     saveMutation.mutate(templateData);
   };
 
-  if (authLoading || !user || user.role !== 'admin') {
+  if (authLoading || converting) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
           <p className="text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Add early return for convertedTemplate null check
+  if (!convertedTemplate) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-4 mb-8">
+            <Button variant="ghost" onClick={() => setLocation("/admin/templates")}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Templates
+            </Button>
+            <h1 className="text-3xl font-bold text-slate-900">Upload Template</h1>
+          </div>
+
+          <Card className="p-8">
+            <div className="text-center">
+              <p className="text-slate-600">No template data available. Please upload a template file first.</p>
+            </div>
+          </Card>
         </div>
       </div>
     );
@@ -440,27 +463,25 @@ export default function TemplateUpload() {
                     {activeTab === 'preview' ? (
                       <div className="bg-white p-4 rounded border">
                         <iframe
-                          srcDoc={convertedTemplate ? `
+                          srcDoc={`
                             <!DOCTYPE html>
                             <html>
                               <head>
                                 <style>
-                                  body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
-                                  img { max-width: 100px; height: 100px; border-radius: 50%; object-fit: cover; }
                                   ${convertedTemplate.css || ''}
+                                  body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
                                 </style>
                               </head>
                               <body>
                                 ${convertedTemplate.html ? convertedTemplate.html.replace(/\{\{(\w+)\}\}/g, (match, field) => {
-                                  const dummyData: Record<string, string> = {
+                                  const dummyData = {
                                     fullName: 'John Doe',
-                                    professionalTitle: 'Software Engineer',
-                                    email: 'john.doe@email.com',
-                                    mobileNumber: '(555) 123-4567',
-                                    address: '123 Main St, New York, NY 10001',
-                                    linkedinId: 'linkedin.com/in/johndoe',
-                                    summary: 'Experienced software engineer with 5+ years of expertise in full-stack development. Passionate about creating scalable solutions and leading development teams.',
-                                    company: 'TechCorp Inc.',
+                                    email: 'john.doe@example.com',
+                                    phone: '+1 (555) 123-4567',
+                                    address: '123 Main St, City, State 12345',
+                                    professionalTitle: 'Senior Software Engineer',
+                                    summary: 'Experienced software engineer with 8+ years of developing scalable web applications and leading cross-functional teams.',
+                                    company: 'Tech Solutions Inc.',
                                     position: 'Senior Software Engineer',
                                     startDate: 'Jan 2022',
                                     endDate: 'Present',
@@ -475,37 +496,16 @@ export default function TemplateUpload() {
                                 }) : '<div style="padding: 20px; text-align: center; color: #666;">Template content not available</div>'}
                               </body>
                             </html>
-                          ` : `
-                            <!DOCTYPE html>
-                            <html>
-                              <head>
-                                <style>
-                                  body { margin: 0; padding: 20px; font-family: Arial, sans-serif; text-align: center; color: #666; }
-                                </style>
-                              </head>
-                              <body>
-                                <div style="padding: 20px;">Template not available</div>
-                              </body>
-                            </html>
                           `}
                           className="w-full h-80 border-0"
                           title="Template Preview"
                         />
                       </div>
                     ) : (
-                      <div className="space-y-4">
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-2">HTML:</h4>
-                          <div className="bg-gray-100 p-3 rounded max-h-40 overflow-auto">
-                            <pre className="text-sm text-gray-800 whitespace-pre-wrap">{convertedTemplate.html || 'HTML content not available'}</pre>
-                          </div>
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-900 mb-2">CSS:</h4>
-                          <div className="bg-gray-100 p-3 rounded max-h-40 overflow-auto">
-                            <pre className="text-sm text-gray-800 whitespace-pre-wrap">{convertedTemplate.css || 'CSS content not available'}</pre>
-                          </div>
-                        </div>
+                      <div className="bg-gray-50 p-4 rounded border">
+                        <pre className="whitespace-pre-wrap text-sm">
+                          <code>{convertedTemplate.html || 'HTML content not available'}</code>
+                        </pre>
                       </div>
                     )}
                   </div>
