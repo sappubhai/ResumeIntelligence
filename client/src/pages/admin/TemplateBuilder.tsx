@@ -116,7 +116,7 @@ interface DraggableItemProps {
 }
 
 // Draggable source for available sections
-const DraggableSourceSection = ({ section, onAddSection }: { section: any; onAddSection: (type: string, title: string) => void }) => {
+const DraggableSourceSection = ({ section }: { section: any }) => {
   const [, drag] = useDrag({
     type: 'new-section',
     item: { sectionType: section.type, sectionTitle: section.title },
@@ -126,12 +126,13 @@ const DraggableSourceSection = ({ section, onAddSection }: { section: any; onAdd
     <div
       ref={drag}
       className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 cursor-grab transition-colors"
-      onClick={() => onAddSection(section.type, section.title)}
+      title={`Drag to add ${section.title}`}
     >
       <div className="flex items-center gap-2">
         <section.icon className="w-4 h-4" />
         <span className="text-sm font-medium">{section.title}</span>
       </div>
+      <p className="text-xs text-gray-500 mt-1">Drag to canvas</p>
     </div>
   );
 };
@@ -770,8 +771,7 @@ export default function TemplateBuilder() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const allSections = getAllSections();
-      const { html, css } = generateTemplate(allSections);
+      const { html, css } = generateTemplate();
       return await apiRequest("POST", "/api/admin/templates", {
         name: templateName,
         category: templateCategory,
@@ -798,7 +798,7 @@ export default function TemplateBuilder() {
     }
   });
 
-  const generateTemplate = (sections: TemplateSection[]) => {
+  const generateTemplate = () => {
     const css = `
       .resume-template {
         font-family: ${globalStyles.fontFamily}, sans-serif;
@@ -820,6 +820,7 @@ export default function TemplateBuilder() {
         margin-bottom: 1.5rem;
         padding: 1rem;
         border-radius: 6px;
+        border: 1px solid #e5e7eb;
       }
       .section-title {
         font-size: 1.25rem;
@@ -834,8 +835,8 @@ export default function TemplateBuilder() {
         gap: 1.5rem;
       }
       .layout-single { grid-template-columns: 1fr; }
-      .layout-left-sidebar { grid-template-columns: 1fr 2fr; }
-      .layout-right-sidebar { grid-template-columns: 2fr 1fr; }
+      .layout-left-sidebar { grid-template-columns: 300px 1fr; }
+      .layout-right-sidebar { grid-template-columns: 1fr 300px; }
       .sidebar { background: #f8f9fa; padding: 1rem; border-radius: 8px; }
       .main-content { background: white; }
       .grid-row { display: grid; gap: 1rem; margin-bottom: 1rem; }
@@ -844,91 +845,114 @@ export default function TemplateBuilder() {
       .grid-col-3 { grid-template-columns: 1fr 1fr 1fr; }
       .grid-col-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
       .grid-col-5 { grid-template-columns: 1fr 1fr 1fr 1fr 1fr; }
+      .custom-row { display: flex; gap: 1rem; margin-bottom: 1rem; }
+      .custom-column { padding: 0.5rem; }
       .field-group { margin-bottom: 0.75rem; }
-      .field-label { font-weight: 600; color: #555; }
+      .field-label { font-weight: 600; color: #555; display: inline-block; margin-right: 0.5rem; }
       .field-value { color: #333; }
       .contact-info { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: ${globalStyles.headerStyle === 'centered' ? 'center' : 'flex-start'}; }
     `;
 
-    const html = `
-      <div class="resume-template layout-${pageLayout.type}">
-        <div class="template-layout">
-          ${pageLayout.type === 'single' ? `
-            <div class="main-content">
-              ${pageLayout.mainSections.map(section => `
-                <div class="template-section" style="${getSectionStyle(section)}">
-                  <h2 class="section-title">${section.title}</h2>
-                  ${generateSectionContent(section)}
-                </div>
-              `).join('')}
-            </div>
-          ` : pageLayout.type === 'left-sidebar' ? `
-            <div class="sidebar">
-              ${pageLayout.sidebarSections.map(section => `
-                <div class="template-section" style="${getSectionStyle(section)}">
-                  <h2 class="section-title">${section.title}</h2>
-                  ${generateSectionContent(section)}
-                </div>
-              `).join('')}
-            </div>
-            <div class="main-content">
-              ${pageLayout.mainSections.map(section => `
-                <div class="template-section" style="${getSectionStyle(section)}">
-                  <h2 class="section-title">${section.title}</h2>
-                  ${generateSectionContent(section)}
-                </div>
-              `).join('')}
-            </div>
-          ` : pageLayout.type === 'right-sidebar' ? `
-            <div class="main-content">
-              ${pageLayout.mainSections.map(section => `
-                <div class="template-section" style="${getSectionStyle(section)}">
-                  <h2 class="section-title">${section.title}</h2>
-                  ${generateSectionContent(section)}
-                </div>
-              `).join('')}
-            </div>
-            <div class="sidebar">
-              ${pageLayout.sidebarSections.map(section => `
-                <div class="template-section" style="${getSectionStyle(section)}">
-                  <h2 class="section-title">${section.title}</h2>
-                  ${generateSectionContent(section)}
-                </div>
-              `).join('')}
-            </div>
-          ` : `
-            ${pageLayout.gridRows.map(row => `
-              <div class="grid-row grid-col-${row.columns}">
-                ${Array.from({ length: row.columns }, (_, i) => `
-                  <div class="grid-column">
-                    ${(row.sections[i] || []).map(section => `
-                      <div class="template-section" style="${getSectionStyle(section)}">
-                        <h2 class="section-title">${section.title}</h2>
-                        ${generateSectionContent(section)}
-                      </div>
-                    `).join('')}
-                  </div>
-                `).join('')}
+    let html = '';
+
+    if (pageLayout.type === 'single') {
+      html = `
+        <div class="resume-template layout-single">
+          <div class="main-content">
+            ${pageLayout.mainSections.map(section => `
+              <div class="template-section" style="${getSectionStyle(section)}">
+                <h2 class="section-title">${section.title}</h2>
+                ${generateSectionContent(section)}
               </div>
             `).join('')}
-            ${pageLayout.customRows.map(row => `
-              <div class="custom-row" style="display: flex;">
-                ${row.columns.map(col => `
-                  <div class="custom-column" style="width: ${col.width}%;">
-                    ${col.sections.map(section => `
-                      <div class="template-section" style="${getSectionStyle(section)}">
-                        <h2 class="section-title">${section.title}</h2>
-                        ${generateSectionContent(section)}
-                      </div>
-                    `).join('')}
-                  </div>
-                `).join('')}
-              </div>
-            `).join('')}
-          `}
+          </div>
         </div>
-      </div>
-    `;
+      `;
+    } else if (pageLayout.type === 'left-sidebar') {
+      html = `
+        <div class="resume-template layout-left-sidebar">
+          <div class="template-layout">
+            <div class="sidebar">
+              ${pageLayout.sidebarSections.map(section => `
+                <div class="template-section" style="${getSectionStyle(section)}">
+                  <h2 class="section-title">${section.title}</h2>
+                  ${generateSectionContent(section)}
+                </div>
+              `).join('')}
+            </div>
+            <div class="main-content">
+              ${pageLayout.mainSections.map(section => `
+                <div class="template-section" style="${getSectionStyle(section)}">
+                  <h2 class="section-title">${section.title}</h2>
+                  ${generateSectionContent(section)}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (pageLayout.type === 'right-sidebar') {
+      html = `
+        <div class="resume-template layout-right-sidebar">
+          <div class="template-layout">
+            <div class="main-content">
+              ${pageLayout.mainSections.map(section => `
+                <div class="template-section" style="${getSectionStyle(section)}">
+                  <h2 class="section-title">${section.title}</h2>
+                  ${generateSectionContent(section)}
+                </div>
+              `).join('')}
+            </div>
+            <div class="sidebar">
+              ${pageLayout.sidebarSections.map(section => `
+                <div class="template-section" style="${getSectionStyle(section)}">
+                  <h2 class="section-title">${section.title}</h2>
+                  ${generateSectionContent(section)}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      `;
+    } else if (pageLayout.type === 'grid') {
+      html = `
+        <div class="resume-template">
+          ${pageLayout.gridRows.map(row => `
+            <div class="grid-row grid-col-${row.columns}">
+              ${Array.from({ length: row.columns }, (_, i) => `
+                <div class="grid-column">
+                  ${(row.sections[i] || []).map(section => `
+                    <div class="template-section" style="${getSectionStyle(section)}">
+                      <h2 class="section-title">${section.title}</h2>
+                      ${generateSectionContent(section)}
+                    </div>
+                  `).join('')}
+                </div>
+              `).join('')}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    } else if (pageLayout.type === 'custom') {
+      html = `
+        <div class="resume-template">
+          ${pageLayout.customRows.map(row => `
+            <div class="custom-row">
+              ${row.columns.map(col => `
+                <div class="custom-column" style="width: ${col.width}%;">
+                  ${col.sections.map(section => `
+                    <div class="template-section" style="${getSectionStyle(section)}">
+                      <h2 class="section-title">${section.title}</h2>
+                      ${generateSectionContent(section)}
+                    </div>
+                  `).join('')}
+                </div>
+              `).join('')}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
 
     return { html, css };
   };
@@ -1010,12 +1034,6 @@ export default function TemplateBuilder() {
                           <DraggableSourceSection
                             key={section.type}
                             section={section}
-                            onAddSection={(type, title) => {
-                              setTargetLocation('main');
-                              setShowSectionModal(true);
-                              // Auto-add to main if modal is not needed
-                              addSection(type, title, 'main');
-                            }}
                           />
                         ))}
                       </div>
@@ -1272,7 +1290,7 @@ export default function TemplateBuilder() {
 
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => {
-                      const { html, css } = generateTemplate(getAllSections());
+                      const { html, css } = generateTemplate();
                       const previewWindow = window.open('', '_blank', 'width=800,height=600');
                       if (previewWindow) {
                         previewWindow.document.open();
@@ -1282,8 +1300,16 @@ export default function TemplateBuilder() {
                             <head>
                               <title>Template Preview</title>
                               <style>${css}</style>
+                              <style>
+                                body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+                                .preview-container { max-width: 800px; margin: 0 auto; }
+                              </style>
                             </head>
-                            <body>${html}</body>
+                            <body>
+                              <div class="preview-container">
+                                ${html}
+                              </div>
+                            </body>
                           </html>
                         `);
                         previewWindow.document.close();
