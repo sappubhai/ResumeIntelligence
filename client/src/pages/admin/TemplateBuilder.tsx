@@ -184,11 +184,52 @@ export default function TemplateBuilder() {
   const [globalStyles, setGlobalStyles] = useState({
     primaryColor: '#6366f1',
     secondaryColor: '#8b5cf6',
+    accentColor: '#10b981',
     fontFamily: 'Inter',
     fontSize: 'base',
     photoStyle: 'circle',
     sectionDivider: 'line',
-    colorScheme: 'professional'
+    colorScheme: 'professional',
+    headerStyle: 'centered',
+    spacing: 'normal',
+    borderStyle: 'none'
+  });
+
+  const [previewMode, setPreviewMode] = useState(false);
+  const [previewData, setPreviewData] = useState({
+    fullName: 'John Doe',
+    professionalTitle: 'Senior Software Engineer',
+    email: 'john.doe@email.com',
+    mobileNumber: '+1 (555) 123-4567',
+    address: 'New York, NY',
+    summary: 'Experienced software engineer with 5+ years of expertise in full-stack development.',
+    workExperience: [
+      {
+        id: '1',
+        company: 'Tech Corp',
+        position: 'Senior Developer',
+        startDate: '2020-01',
+        endDate: '2024-01',
+        isCurrent: false,
+        description: 'Led development of scalable web applications using React and Node.js.'
+      }
+    ],
+    education: [
+      {
+        id: '1',
+        institution: 'University of Technology',
+        degree: 'Bachelor',
+        field: 'Computer Science',
+        startDate: '2016-09',
+        endDate: '2020-05',
+        status: 'Completed'
+      }
+    ],
+    skills: [
+      { id: '1', name: 'JavaScript', rating: 5, category: 'Programming' },
+      { id: '2', name: 'React', rating: 4, category: 'Frontend' },
+      { id: '3', name: 'Node.js', rating: 4, category: 'Backend' }
+    ]
   });
 
   const availableSections = [
@@ -247,30 +288,147 @@ export default function TemplateBuilder() {
   };
 
   const generateTemplate = () => {
+    const spacingMultiplier = globalStyles.spacing === 'compact' ? 0.75 : globalStyles.spacing === 'relaxed' ? 1.5 : 1;
+    
     const css = `
       :root {
         --primary-color: ${globalStyles.primaryColor};
         --secondary-color: ${globalStyles.secondaryColor};
+        --accent-color: ${globalStyles.accentColor};
         --font-family: ${globalStyles.fontFamily}, sans-serif;
+        --spacing-unit: ${16 * spacingMultiplier}px;
       }
       
-      body {
+      .resume-template {
         font-family: var(--font-family);
         color: #1f2937;
         line-height: 1.6;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: var(--spacing-unit);
+        background: #ffffff;
+      }
+      
+      .resume-header {
+        ${globalStyles.headerStyle === 'centered' ? 'text-align: center;' : ''}
+        ${globalStyles.headerStyle === 'left' ? 'text-align: left;' : ''}
+        ${globalStyles.headerStyle === 'split' ? 'display: flex; justify-content: space-between; align-items: center;' : ''}
+        margin-bottom: calc(var(--spacing-unit) * 2);
+        padding-bottom: var(--spacing-unit);
+        border-bottom: 2px solid var(--primary-color);
+      }
+      
+      .full-name {
+        font-size: 2.5em;
+        font-weight: bold;
+        color: var(--primary-color);
+        margin: 0 0 0.5em 0;
+      }
+      
+      .professional-title {
+        font-size: 1.3em;
+        color: var(--secondary-color);
+        margin: 0 0 1em 0;
+      }
+      
+      .contact-info {
+        display: flex;
+        gap: calc(var(--spacing-unit) * 0.75);
+        flex-wrap: wrap;
+        ${globalStyles.headerStyle === 'centered' ? 'justify-content: center;' : ''}
       }
       
       .photo-${globalStyles.photoStyle} {
-        ${globalStyles.photoStyle === 'circle' ? 'border-radius: 50%;' : 'border-radius: 8px;'}
+        ${globalStyles.photoStyle === 'circle' ? 'border-radius: 50%;' : ''}
+        ${globalStyles.photoStyle === 'square' ? 'border-radius: 0;' : ''}
+        ${globalStyles.photoStyle === 'rounded' ? 'border-radius: 12px;' : ''}
         width: 120px;
         height: 120px;
         object-fit: cover;
+        border: 3px solid var(--primary-color);
+      }
+      
+      .resume-section {
+        margin-bottom: calc(var(--spacing-unit) * 1.5);
+      }
+      
+      .section-title {
+        font-size: 1.4em;
+        color: var(--primary-color);
+        margin-bottom: var(--spacing-unit);
+        padding-bottom: calc(var(--spacing-unit) * 0.5);
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 600;
       }
       
       .section-divider {
         ${globalStyles.sectionDivider === 'line' ? 'border-top: 2px solid var(--primary-color);' : ''}
-        ${globalStyles.sectionDivider === 'gradient' ? 'background: linear-gradient(to right, var(--primary-color), var(--secondary-color)); height: 2px;' : ''}
-        margin: 24px 0;
+        ${globalStyles.sectionDivider === 'gradient' ? 'background: linear-gradient(to right, var(--primary-color), var(--secondary-color)); height: 2px; border: none;' : ''}
+        ${globalStyles.sectionDivider === 'none' ? 'display: none;' : ''}
+        margin: var(--spacing-unit) 0;
+      }
+      
+      .experience-item, .education-item, .project-item {
+        margin-bottom: var(--spacing-unit);
+        padding-bottom: calc(var(--spacing-unit) * 0.5);
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      .experience-item:last-child, .education-item:last-child, .project-item:last-child {
+        border-bottom: none;
+      }
+      
+      .item-title {
+        font-size: 1.1em;
+        font-weight: 600;
+        color: var(--secondary-color);
+        margin: 0 0 0.25em 0;
+      }
+      
+      .item-subtitle {
+        color: #6b7280;
+        font-style: italic;
+        margin: 0 0 0.5em 0;
+      }
+      
+      .skills-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: calc(var(--spacing-unit) * 0.75);
+      }
+      
+      .skill-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: calc(var(--spacing-unit) * 0.5) 0;
+      }
+      
+      .skill-rating {
+        color: var(--accent-color);
+        font-size: 1.1em;
+      }
+      
+      @media (max-width: 768px) {
+        .resume-template {
+          padding: calc(var(--spacing-unit) * 0.75);
+        }
+        
+        .resume-header {
+          text-align: center !important;
+          flex-direction: column !important;
+        }
+        
+        .contact-info {
+          flex-direction: column;
+          align-items: center;
+          gap: calc(var(--spacing-unit) * 0.5);
+        }
+        
+        .skills-grid {
+          grid-template-columns: 1fr;
+        }
       }
     `;
 
@@ -409,9 +567,16 @@ export default function TemplateBuilder() {
                 </div>
               </div>
               <div className="flex gap-3">
-                <Button variant="outline">
+                <Button 
+                  variant="outline"
+                  onClick={() => setPreviewMode(!previewMode)}
+                >
                   <Eye className="w-4 h-4 mr-2" />
-                  Preview
+                  {previewMode ? 'Edit Mode' : 'Preview'}
+                </Button>
+                <Button variant="outline">
+                  <Download className="w-4 h-4 mr-2" />
+                  Export HTML
                 </Button>
                 <Button
                   onClick={() => saveMutation.mutate()}
@@ -419,7 +584,7 @@ export default function TemplateBuilder() {
                   className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
                 >
                   <Save className="w-4 h-4 mr-2" />
-                  Save Template
+                  {saveMutation.isPending ? 'Saving...' : 'Save Template'}
                 </Button>
               </div>
             </div>
@@ -485,6 +650,60 @@ export default function TemplateBuilder() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
+                    <Label>Color Scheme Presets</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setGlobalStyles({
+                          ...globalStyles,
+                          primaryColor: '#2563eb',
+                          secondaryColor: '#1d4ed8',
+                          accentColor: '#3b82f6'
+                        })}
+                      >
+                        Professional Blue
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setGlobalStyles({
+                          ...globalStyles,
+                          primaryColor: '#059669',
+                          secondaryColor: '#047857',
+                          accentColor: '#10b981'
+                        })}
+                      >
+                        Modern Green
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setGlobalStyles({
+                          ...globalStyles,
+                          primaryColor: '#7c3aed',
+                          secondaryColor: '#6d28d9',
+                          accentColor: '#8b5cf6'
+                        })}
+                      >
+                        Creative Purple
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setGlobalStyles({
+                          ...globalStyles,
+                          primaryColor: '#374151',
+                          secondaryColor: '#1f2937',
+                          accentColor: '#6b7280'
+                        })}
+                      >
+                        Executive Gray
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label>Primary Color</Label>
                     <div className="flex gap-2">
                       <Input
@@ -496,6 +715,22 @@ export default function TemplateBuilder() {
                       <Input
                         value={globalStyles.primaryColor}
                         onChange={(e) => setGlobalStyles({...globalStyles, primaryColor: e.target.value})}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Secondary Color</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        type="color"
+                        value={globalStyles.secondaryColor}
+                        onChange={(e) => setGlobalStyles({...globalStyles, secondaryColor: e.target.value})}
+                        className="w-16 h-10"
+                      />
+                      <Input
+                        value={globalStyles.secondaryColor}
+                        onChange={(e) => setGlobalStyles({...globalStyles, secondaryColor: e.target.value})}
                       />
                     </div>
                   </div>
@@ -520,6 +755,34 @@ export default function TemplateBuilder() {
                           Square
                         </Label>
                       </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="rounded" id="rounded" />
+                        <Label htmlFor="rounded" className="flex items-center cursor-pointer">
+                          <Square className="w-4 h-4 mr-2 rounded" />
+                          Rounded
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Section Divider</Label>
+                    <RadioGroup
+                      value={globalStyles.sectionDivider}
+                      onValueChange={(value) => setGlobalStyles({...globalStyles, sectionDivider: value})}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="line" id="line" />
+                        <Label htmlFor="line">Simple Line</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="gradient" id="gradient" />
+                        <Label htmlFor="gradient">Gradient Line</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="none" id="none-divider" />
+                        <Label htmlFor="none-divider">No Divider</Label>
+                      </div>
                     </RadioGroup>
                   </div>
 
@@ -530,12 +793,56 @@ export default function TemplateBuilder() {
                       value={globalStyles.fontFamily}
                       onChange={(e) => setGlobalStyles({...globalStyles, fontFamily: e.target.value})}
                     >
-                      <option value="Inter">Inter</option>
-                      <option value="Roboto">Roboto</option>
-                      <option value="Open Sans">Open Sans</option>
-                      <option value="Lato">Lato</option>
-                      <option value="Montserrat">Montserrat</option>
+                      <option value="Inter">Inter (Modern)</option>
+                      <option value="Roboto">Roboto (Clean)</option>
+                      <option value="Open Sans">Open Sans (Friendly)</option>
+                      <option value="Lato">Lato (Professional)</option>
+                      <option value="Montserrat">Montserrat (Elegant)</option>
+                      <option value="Source Sans Pro">Source Sans Pro</option>
+                      <option value="Poppins">Poppins (Trendy)</option>
                     </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Header Style</Label>
+                    <RadioGroup
+                      value={globalStyles.headerStyle}
+                      onValueChange={(value) => setGlobalStyles({...globalStyles, headerStyle: value})}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="centered" id="centered" />
+                        <Label htmlFor="centered">Centered</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="left" id="left-header" />
+                        <Label htmlFor="left-header">Left Aligned</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="split" id="split" />
+                        <Label htmlFor="split">Split Layout</Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Spacing</Label>
+                    <RadioGroup
+                      value={globalStyles.spacing}
+                      onValueChange={(value) => setGlobalStyles({...globalStyles, spacing: value})}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="compact" id="compact" />
+                        <Label htmlFor="compact">Compact</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="normal" id="normal" />
+                        <Label htmlFor="normal">Normal</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="relaxed" id="relaxed" />
+                        <Label htmlFor="relaxed">Relaxed</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
                 </CardContent>
               </Card>

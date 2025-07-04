@@ -371,8 +371,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Template management with PDF upload
-  app.post('/api/admin/templates', isAdmin, upload.single('templateFile'), async (req, res) => {
+  // Template management with AI-powered PDF/Word conversion
+  app.post('/api/admin/templates/upload', isAdmin, upload.single('file'), async (req, res) => {
     try {
       const { name, description, category } = req.body;
       const file = req.file;
@@ -381,51 +381,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No template file uploaded" });
       }
 
-      // Generate HTML and CSS from PDF template (simplified version)
-      const htmlTemplate = `
-        <div class="resume-template">
-          <h1>{{fullName}}</h1>
-          <h2>{{professionalTitle}}</h2>
-          <div class="contact">
-            <p>{{email}} | {{mobileNumber}}</p>
-            <p>{{address}}</p>
-          </div>
-          <div class="summary">{{summary}}</div>
-          <div class="experience">{{workExperience}}</div>
-          <div class="education">{{education}}</div>
-          <div class="skills">{{skills}}</div>
-        </div>
-      `;
+      // Import the AI converter
+      const { convertTemplateFromFile } = await import('./services/templateConverter');
+      
+      // Convert the uploaded file to HTML template using AI
+      const convertedTemplate = await convertTemplateFromFile(
+        file.buffer,
+        file.mimetype,
+        name || file.originalname.replace(/\.[^/.]+$/, ""),
+        description || `Template converted from ${file.originalname}`
+      );
 
-      const cssStyles = `
-        .resume-template {
-          font-family: Arial, sans-serif;
-          max-width: 800px;
-          margin: 0 auto;
-          padding: 20px;
-          line-height: 1.6;
-        }
-        h1 { color: #333; font-size: 2.5em; margin-bottom: 0.2em; }
-        h2 { color: #666; font-size: 1.5em; margin-bottom: 1em; }
-        .contact { margin-bottom: 1.5em; }
-        .summary { margin-bottom: 2em; }
-        .experience, .education, .skills { margin-bottom: 1.5em; }
-      `;
+      // Return the converted template for preview
+      res.json(convertedTemplate);
+    } catch (error) {
+      console.error("Error converting template:", error);
+      res.status(500).json({ 
+        message: "Failed to convert template",
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+  });
+
+  // Save converted template to database
+  app.post('/api/admin/templates', isAdmin, async (req, res) => {
+    try {
+      const { name, description, category, html, css } = req.body;
+
+      if (!name || !html || !css) {
+        return res.status(400).json({ message: "Missing required template data" });
+      }
 
       const template = await storage.createTemplate({
         name,
-        description,
-        category,
-        htmlTemplate,
-        cssStyles,
+        description: description || '',
+        category: category || 'professional',
+        htmlTemplate: html,
+        cssStyles: css,
         previewImage: null,
         isActive: true,
       });
 
       res.json(template);
     } catch (error) {
-      console.error("Error creating template:", error);
-      res.status(500).json({ message: "Failed to create template" });
+      console.error("Error saving template:", error);
+      res.status(500).json({ message: "Failed to save template" });
     }
   });
 
