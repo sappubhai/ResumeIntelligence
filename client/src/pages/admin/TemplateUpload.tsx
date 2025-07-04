@@ -99,7 +99,9 @@ export default function TemplateUpload() {
     accept: {
       'application/pdf': ['.pdf'],
       'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'text/html': ['.html'],
+      'text/plain': ['.txt']
     },
     maxFiles: 1,
     onDrop: (acceptedFiles) => {
@@ -308,7 +310,7 @@ export default function TemplateUpload() {
                             or click to browse
                           </p>
                           <p className="text-xs text-gray-400 mt-2">
-                            Supports PDF, DOC, DOCX files up to 10MB
+                            Supports PDF, DOC, DOCX, HTML files up to 10MB
                           </p>
                         </div>
                       </>
@@ -437,10 +439,14 @@ export default function TemplateUpload() {
                             <!DOCTYPE html>
                             <html>
                               <head>
-                                <style>${convertedTemplate.css || ''}</style>
+                                <style>
+                                  body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+                                  img { max-width: 100px; height: 100px; border-radius: 50%; object-fit: cover; }
+                                  ${convertedTemplate.css || ''}
+                                </style>
                               </head>
                               <body>
-                                ${(convertedTemplate.html || '<p>Template content not available</p>').replace(/\{\{(\w+)\}\}/g, (match, field) => {
+                                ${convertedTemplate.html ? convertedTemplate.html.replace(/\{\{(\w+)\}\}/g, (match, field) => {
                                   const dummyData: Record<string, string> = {
                                     fullName: 'John Doe',
                                     professionalTitle: 'Software Engineer',
@@ -448,18 +454,20 @@ export default function TemplateUpload() {
                                     mobileNumber: '(555) 123-4567',
                                     address: '123 Main St, New York, NY 10001',
                                     linkedinId: 'linkedin.com/in/johndoe',
-                                    summary: 'Experienced software engineer with 5+ years of expertise in full-stack development.',
+                                    summary: 'Experienced software engineer with 5+ years of expertise in full-stack development. Passionate about creating scalable solutions and leading development teams.',
                                     company: 'TechCorp Inc.',
                                     position: 'Senior Software Engineer',
                                     startDate: 'Jan 2022',
                                     endDate: 'Present',
-                                    description: 'Led development of microservices architecture serving 1M+ users.',
+                                    description: 'Led development of microservices architecture serving 1M+ users. Implemented CI/CD pipelines and mentored junior developers.',
                                     institution: 'University of Technology',
                                     degree: 'Bachelor of Science',
-                                    field: 'Computer Science'
+                                    field: 'Computer Science',
+                                    skills: 'JavaScript, React, Node.js, Python, AWS, Docker',
+                                    profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face'
                                   };
-                                  return dummyData[field] || field;
-                                })}
+                                  return dummyData[field] || `{{${field}}}`;
+                                }) : '<div style="padding: 20px; text-align: center; color: #666;">Template content not available</div>'}
                               </body>
                             </html>
                           `}

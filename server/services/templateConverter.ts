@@ -21,11 +21,24 @@ export async function convertTemplateFromFile(
     // Step 1: Extract text and basic structure from document
     let textContent = '';
     let structuralInfo = '';
+    let html = '';
+    let css = '';
 
-    if (mimetype === 'application/pdf') {
+    if (mimetype === 'text/html') {
+      // Handle HTML file upload directly
+      const htmlContent = buffer.toString('utf-8');
+      const { processedHtml, extractedCss } = processHTMLTemplate(htmlContent);
+      html = processedHtml;
+      css = extractedCss;
+    } else if (mimetype === 'application/pdf') {
       const result = await extractFromPDF(buffer);
       textContent = result.text;
       structuralInfo = result.structure;
+      
+      // Step 2: Use AI to analyze and convert to HTML template
+      const aiResult = await convertToHTMLTemplate(textContent, structuralInfo);
+      html = aiResult.html;
+      css = aiResult.css;
     } else if (
       mimetype === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
       mimetype === 'application/msword'
@@ -33,12 +46,14 @@ export async function convertTemplateFromFile(
       const result = await extractFromWord(buffer);
       textContent = result.text;
       structuralInfo = result.structure;
+      
+      // Step 2: Use AI to analyze and convert to HTML template
+      const aiResult = await convertToHTMLTemplate(textContent, structuralInfo);
+      html = aiResult.html;
+      css = aiResult.css;
     } else {
       throw new Error('Unsupported file format');
     }
-
-    // Step 2: Use AI to analyze and convert to HTML template
-    const { html, css } = await convertToHTMLTemplate(textContent, structuralInfo);
 
     return {
       name: templateName,
@@ -182,6 +197,104 @@ Return only valid JSON:
   } catch (error) {
     console.error('Error in AI conversion:', error);
     return {
+
+
+function processHTMLTemplate(htmlContent: string): { processedHtml: string, extractedCss: string } {
+  try {
+    // Extract CSS from style tags
+    const styleMatches = htmlContent.match(/<style[^>]*>(.*?)<\/style>/gis);
+    let extractedCss = '';
+    
+    if (styleMatches) {
+      extractedCss = styleMatches.map(match => 
+        match.replace(/<\/?style[^>]*>/gi, '')
+      ).join('\n');
+    }
+
+    // Remove style tags from HTML
+    let processedHtml = htmlContent.replace(/<style[^>]*>.*?<\/style>/gis, '');
+    
+    // Remove head, html, body tags to get just the content
+    processedHtml = processedHtml.replace(/<\/?(!DOCTYPE|html|head|body)[^>]*>/gi, '');
+    
+    // Replace common text patterns with template variables
+    processedHtml = replaceTextWithVariables(processedHtml);
+    
+    // Add profile image placeholder if not present
+    if (!processedHtml.includes('{{profileImage}}') && !processedHtml.includes('<img')) {
+      // Add profile image at the beginning
+      processedHtml = '<div class="profile-image"><img src="{{profileImage}}" alt="Profile Picture" /></div>\n' + processedHtml;
+    }
+
+    // Ensure we have basic CSS if none extracted
+    if (!extractedCss.trim()) {
+      extractedCss = generateFallbackCSS();
+    }
+
+    return { processedHtml, extractedCss };
+  } catch (error) {
+    console.error('Error processing HTML template:', error);
+    return { 
+      processedHtml: generateFallbackHTML(), 
+      extractedCss: generateFallbackCSS() 
+    };
+  }
+}
+
+function replaceTextWithVariables(html: string): string {
+  // Common patterns to replace with template variables
+  const patterns = [
+    // Name patterns
+    { regex: /\b[A-Z][a-z]+ [A-Z][a-z]+\b/g, replacement: '{{fullName}}' },
+    
+    // Email patterns
+    { regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, replacement: '{{email}}' },
+    
+    // Phone patterns
+    { regex: /\b(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, replacement: '{{mobileNumber}}' },
+    
+    // Address patterns (basic)
+    { regex: /\b\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl)[^,\n]*/g, replacement: '{{address}}' },
+    
+    // LinkedIn patterns
+    { regex: /(?:linkedin\.com\/in\/|linkedin\.com\/profile\/)[A-Za-z0-9-]+/g, replacement: '{{linkedinId}}' },
+    
+    // Years and dates
+    { regex: /\b(19|20)\d{2}\s*[-–]\s*(19|20)\d{2}\b/g, replacement: '{{startDate}} - {{endDate}}' },
+    { regex: /\b(19|20)\d{2}\s*[-–]\s*Present\b/gi, replacement: '{{startDate}} - {{endDate}}' },
+    
+    // Job titles (common ones)
+    { regex: /\b(Software Engineer|Developer|Manager|Director|Analyst|Consultant|Designer|Architect|Lead|Senior|Junior|Associate|Principal)\b/g, replacement: '{{professionalTitle}}' },
+    
+    // Company names (placeholder for demo)
+    { regex: /\b(Inc\.|LLC|Corp\.|Corporation|Company|Technologies|Solutions|Systems|Group|Ltd\.|Limited)\b/g, replacement: '{{company}}' },
+  ];
+
+  let processedHtml = html;
+  
+  // Don't replace text inside headings (h1-h6 tags) to preserve section structure
+  const headingRegex = /<(h[1-6])[^>]*>(.*?)<\/\1>/gi;
+  const headings: string[] = [];
+  
+  // Extract headings
+  processedHtml = processedHtml.replace(headingRegex, (match) => {
+    headings.push(match);
+    return `__HEADING_${headings.length - 1}__`;
+  });
+
+  // Apply replacements to non-heading content
+  patterns.forEach(pattern => {
+    processedHtml = processedHtml.replace(pattern.regex, pattern.replacement);
+  });
+
+  // Restore headings
+  headings.forEach((heading, index) => {
+    processedHtml = processedHtml.replace(`__HEADING_${index}__`, heading);
+  });
+
+  return processedHtml;
+}
+
       html: generateFallbackHTML(),
       css: generateFallbackCSS()
     };
@@ -192,14 +305,19 @@ function generateFallbackHTML(): string {
   return `
     <div class="resume-template">
       <header class="resume-header">
-        <div class="header-content">
-          <h1 class="full-name">{{fullName}}</h1>
-          <h2 class="professional-title">{{professionalTitle}}</h2>
-          <div class="contact-info">
-            <span class="email">{{email}}</span>
-            <span class="phone">{{mobileNumber}}</span>
-            <span class="address">{{address}}</span>
-            <span class="linkedin">{{linkedinId}}</span>
+        <div class="profile-section">
+          <div class="profile-image">
+            <img src="{{profileImage}}" alt="Profile Picture" />
+          </div>
+          <div class="header-content">
+            <h1 class="full-name">{{fullName}}</h1>
+            <h2 class="professional-title">{{professionalTitle}}</h2>
+            <div class="contact-info">
+              <span class="email">{{email}}</span>
+              <span class="phone">{{mobileNumber}}</span>
+              <span class="address">{{address}}</span>
+              <span class="linkedin">{{linkedinId}}</span>
+            </div>
           </div>
         </div>
       </header>
@@ -250,13 +368,36 @@ function generateFallbackCSS(): string {
     }
 
     .resume-header {
-      text-align: center;
       margin-bottom: 2rem;
       padding: 2rem 1.5rem;
       background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
       color: white;
       border-radius: 12px;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .profile-section {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      text-align: left;
+    }
+
+    .profile-image {
+      flex-shrink: 0;
+    }
+
+    .profile-image img {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 4px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .header-content {
+      flex: 1;
     }
 
     .full-name {
