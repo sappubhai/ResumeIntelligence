@@ -804,4 +804,4 @@ export default function TemplateBuilder() {
       .field-group { margin-bottom: 0.75rem; }
       .field-label { font-weight: 600; color: #555; }
       .field-value { color: #333; }
-      .contact-info { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: ${globalStyles.headerStyle === 'centered' ? 'center' : 'flex-start
+      .contact-info { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: ${globalStyles.headerStyle === 'centered' ? 'center' : 'flex-start'}; }
