@@ -11,8 +11,10 @@ import ResumeBuilder from "@/pages/ResumeBuilder";
 import ResumePreview from "@/pages/ResumePreview";
 import TemplateSelector from "@/pages/TemplateSelector";
 import AdminDashboard from "@/pages/AdminDashboard";
-import AdminUsers from "@/pages/AdminUsers";
-import AdminTemplates from "@/pages/AdminTemplates";
+import AdminUsers from "./pages/AdminUsers";
+import AdminTemplates from "./pages/AdminTemplates";
+import TemplateUpload from "./pages/admin/TemplateUpload";
+import TemplateBuilder from "./pages/admin/TemplateBuilder";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 
@@ -28,6 +30,8 @@ function Router() {
       <ProtectedRoute path="/admin" component={AdminDashboard} />
       <ProtectedRoute path="/admin/users" component={AdminUsers} />
       <ProtectedRoute path="/admin/templates" component={AdminTemplates} />
+      <ProtectedRoute path="/admin/templates/upload" component={TemplateUpload} />
+      <ProtectedRoute path="/admin/templates/builder" component={TemplateBuilder} />
       <Route component={NotFound} />
     </Switch>
   );
