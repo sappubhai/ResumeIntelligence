@@ -806,3 +806,123 @@ export default function TemplateBuilder() {
       .field-value { color: #333; }
       .contact-info { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: ${globalStyles.headerStyle === 'centered' ? 'center' : 'flex-start'}; }
     `;
+
+    const html = `
+      <div class="resume-template layout-${pageLayout.type}">
+        <div class="template-layout">
+          ${pageLayout.type === 'single' ? `
+            <div class="main-content">
+              ${pageLayout.mainSections.map(section => `
+                <div class="template-section" style="${getSectionStyle(section)}">
+                  <h2 class="section-title">${section.title}</h2>
+                  ${generateSectionContent(section)}
+                </div>
+              `).join('')}
+            </div>
+          ` : pageLayout.type === 'left-sidebar' ? `
+            <div class="sidebar">
+              ${pageLayout.sidebarSections.map(section => `
+                <div class="template-section" style="${getSectionStyle(section)}">
+                  <h2 class="section-title">${section.title}</h2>
+                  ${generateSectionContent(section)}
+                </div>
+              `).join('')}
+            </div>
+            <div class="main-content">
+              ${pageLayout.mainSections.map(section => `
+                <div class="template-section" style="${getSectionStyle(section)}">
+                  <h2 class="section-title">${section.title}</h2>
+                  ${generateSectionContent(section)}
+                </div>
+              `).join('')}
+            </div>
+          ` : pageLayout.type === 'right-sidebar' ? `
+            <div class="main-content">
+              ${pageLayout.mainSections.map(section => `
+                <div class="template-section" style="${getSectionStyle(section)}">
+                  <h2 class="section-title">${section.title}</h2>
+                  ${generateSectionContent(section)}
+                </div>
+              `).join('')}
+            </div>
+            <div class="sidebar">
+              ${pageLayout.sidebarSections.map(section => `
+                <div class="template-section" style="${getSectionStyle(section)}">
+                  <h2 class="section-title">${section.title}</h2>
+                  ${generateSectionContent(section)}
+                </div>
+              `).join('')}
+            </div>
+          ` : `
+            ${pageLayout.gridRows.map(row => `
+              <div class="grid-row grid-col-${row.columns}">
+                ${Array.from({ length: row.columns }, (_, i) => `
+                  <div class="grid-column">
+                    ${(row.sections[i] || []).map(section => `
+                      <div class="template-section" style="${getSectionStyle(section)}">
+                        <h2 class="section-title">${section.title}</h2>
+                        ${generateSectionContent(section)}
+                      </div>
+                    `).join('')}
+                  </div>
+                `).join('')}
+              </div>
+            `).join('')}
+            ${pageLayout.customRows.map(row => `
+              <div class="custom-row" style="display: flex;">
+                ${row.columns.map(col => `
+                  <div class="custom-column" style="width: ${col.width}%;">
+                    ${col.sections.map(section => `
+                      <div class="template-section" style="${getSectionStyle(section)}">
+                        <h2 class="section-title">${section.title}</h2>
+                        ${generateSectionContent(section)}
+                      </div>
+                    `).join('')}
+                  </div>
+                `).join('')}
+              </div>
+            `).join('')}
+          `}
+        </div>
+      </div>
+    `;
+
+    return { html, css };
+  };
+
+  const getSectionStyle = (section: TemplateSection) => {
+    return Object.entries(section.style)
+      .map(([key, value]) => {
+        const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
+        return `${cssKey}: ${value}${typeof value === 'number' && !['z-index', 'opacity'].includes(cssKey) ? 'px' : ''}`;
+      })
+      .join('; ');
+  };
+
+  const generateSectionContent = (section: TemplateSection) => {
+    const enabledFields = Object.entries(section.fields).filter(([_, field]) => field.enabled);
+    
+    if (section.type === 'header') {
+      return `
+        <div class="contact-info">
+          ${enabledFields.map(([key, field]) => `
+            <div class="field-group">
+              <span class="field-label">${field.label}:</span>
+              <span class="field-value">[${field.label}]</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }
+    
+    return `
+      <div class="section-content">
+        ${enabledFields.map(([key, field]) => `
+          <div class="field-group">
+            <span class="field-label">${field.label}:</span>
+            <span class="field-value">[${field.label}]</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  };
