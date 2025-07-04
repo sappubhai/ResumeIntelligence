@@ -47,6 +47,7 @@ export default function TemplateUpload() {
   const [templateName, setTemplateName] = useState("");
   const [templateDescription, setTemplateDescription] = useState("");
   const [templateCategory, setTemplateCategory] = useState("professional");
+  const [activeTab, setActiveTab] = useState<'preview' | 'html'>('preview');
 
   const uploadMutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -380,17 +381,47 @@ export default function TemplateUpload() {
                 {/* Preview Tabs */}
                 <div className="border rounded-lg">
                   <div className="flex border-b">
-                    <button className="px-4 py-2 text-sm font-medium text-indigo-600 border-b-2 border-indigo-600">
+                    <button 
+                      className={`px-4 py-2 text-sm font-medium ${
+                        activeTab === 'preview' 
+                          ? 'text-indigo-600 border-b-2 border-indigo-600' 
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                      onClick={() => setActiveTab('preview')}
+                    >
                       <Eye className="w-4 h-4 inline mr-2" />
                       Preview
                     </button>
-                    <button className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900">
+                    <button 
+                      className={`px-4 py-2 text-sm font-medium ${
+                        activeTab === 'html' 
+                          ? 'text-indigo-600 border-b-2 border-indigo-600' 
+                          : 'text-gray-600 hover:text-gray-900'
+                      }`}
+                      onClick={() => setActiveTab('html')}
+                    >
                       <Code className="w-4 h-4 inline mr-2" />
                       HTML Code
                     </button>
                   </div>
                   <div className="p-4 bg-gray-50 h-96 overflow-auto">
-                    <div dangerouslySetInnerHTML={{ __html: convertedTemplate.html }} />
+                    {activeTab === 'preview' ? (
+                      <div>
+                        <style dangerouslySetInnerHTML={{ __html: convertedTemplate.css }} />
+                        <div dangerouslySetInnerHTML={{ __html: convertedTemplate.html }} />
+                      </div>
+                    ) : (
+                      <pre className="text-sm text-gray-800 whitespace-pre-wrap">
+                        <div className="mb-4">
+                          <h4 className="font-medium text-gray-900 mb-2">HTML:</h4>
+                          <code className="block bg-gray-100 p-2 rounded">{convertedTemplate.html}</code>
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900 mb-2">CSS:</h4>
+                          <code className="block bg-gray-100 p-2 rounded">{convertedTemplate.css}</code>
+                        </div>
+                      </pre>
+                    )}
                   </div>
                 </div>
 

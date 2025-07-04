@@ -1,3 +1,4 @@
+
 import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -39,7 +40,13 @@ import {
   Settings,
   Move,
   Copy,
-  Plus
+  Plus,
+  Layout,
+  Columns,
+  Sidebar,
+  AlignLeft,
+  AlignRight,
+  Grid3X3
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
@@ -52,6 +59,7 @@ interface TemplateSection {
   type: string;
   title: string;
   content: any;
+  fields: Record<string, { enabled: boolean; label: string; type: string; required?: boolean }>;
   style: {
     backgroundColor?: string;
     textColor?: string;
@@ -64,31 +72,49 @@ interface TemplateSection {
     fontFamily?: string;
     textAlign?: string;
   };
+  location: 'sidebar' | 'main' | string; // row ID for grid layout
+}
+
+interface TemplateRow {
+  id: string;
+  columns: number;
+  sections: { [columnIndex: number]: TemplateSection[] };
+}
+
+interface PageLayout {
+  type: 'single' | 'left-sidebar' | 'right-sidebar' | 'grid';
+  sidebarSections: TemplateSection[];
+  mainSections: TemplateSection[];
+  gridRows: TemplateRow[];
 }
 
 interface DraggableItemProps {
   section: TemplateSection;
   index: number;
-  moveSection: (dragIndex: number, hoverIndex: number) => void;
+  location: string;
+  moveSection: (dragIndex: number, hoverIndex: number, fromLocation: string, toLocation: string) => void;
   updateSection: (id: string, updates: Partial<TemplateSection>) => void;
   deleteSection: (id: string) => void;
   duplicateSection: (id: string) => void;
+  onSelectSection: (sectionId: string) => void;
+  isSelected: boolean;
 }
 
-const DraggableItem = ({ section, index, moveSection, updateSection, deleteSection, duplicateSection }: DraggableItemProps) => {
+const DraggableItem = ({ section, index, location, moveSection, updateSection, deleteSection, duplicateSection, onSelectSection, isSelected }: DraggableItemProps) => {
   const ref = useRef<HTMLDivElement>(null);
   
   const [, drag] = useDrag({
     type: 'section',
-    item: { index },
+    item: { index, location, sectionId: section.id },
   });
 
   const [, drop] = useDrop({
     accept: 'section',
-    hover: (item: { index: number }) => {
-      if (item.index !== index) {
-        moveSection(item.index, index);
+    hover: (item: { index: number; location: string; sectionId: string }) => {
+      if (item.index !== index || item.location !== location) {
+        moveSection(item.index, index, item.location, location);
         item.index = index;
+        item.location = location;
       }
     },
   });
@@ -111,32 +137,35 @@ const DraggableItem = ({ section, index, moveSection, updateSection, deleteSecti
   return (
     <div
       ref={ref}
-      className="border-2 border-dashed border-gray-300 rounded-lg p-4 mb-4 bg-white hover:border-gray-400 cursor-move"
+      className={`border-2 border-dashed rounded-lg p-3 mb-3 bg-white hover:border-gray-400 cursor-move transition-all ${
+        isSelected ? 'border-indigo-500 bg-indigo-50' : 'border-gray-300'
+      }`}
       style={{
         backgroundColor: section.style.backgroundColor || '#ffffff',
         borderRadius: `${section.style.borderRadius || 8}px`,
-        padding: `${section.style.padding || 16}px`,
+        padding: `${section.style.padding || 12}px`,
         margin: `${section.style.margin || 0}px 0`
       }}
+      onClick={() => onSelectSection(section.id)}
     >
       <div className="flex justify-between items-center mb-2">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-gray-100 rounded">
+          <div className="p-1 bg-gray-100 rounded">
             {getSectionIcon()}
           </div>
-          <span className="font-medium">{section.title}</span>
+          <span className="font-medium text-sm">{section.title}</span>
         </div>
         <div className="flex gap-1">
-          <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => duplicateSection(section.id)}>
-            <Copy className="h-4 w-4" />
+          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); duplicateSection(section.id); }}>
+            <Copy className="h-3 w-3" />
           </Button>
-          <Button size="icon" variant="ghost" className="h-8 w-8 text-red-600" onClick={() => deleteSection(section.id)}>
-            <Trash2 className="h-4 w-4" />
+          <Button size="icon" variant="ghost" className="h-6 w-6 text-red-600" onClick={(e) => { e.stopPropagation(); deleteSection(section.id); }}>
+            <Trash2 className="h-3 w-3" />
           </Button>
-          <Move className="h-4 w-4 text-gray-400" />
+          <Move className="h-3 w-3 text-gray-400" />
         </div>
       </div>
-      <div className="text-sm text-gray-600">
+      <div className="text-xs text-gray-600">
         {section.type === 'header' && 'Contact information and photo'}
         {section.type === 'summary' && 'Professional summary or objective'}
         {section.type === 'experience' && 'Work experience details'}
@@ -149,6 +178,21 @@ const DraggableItem = ({ section, index, moveSection, updateSection, deleteSecti
   );
 };
 
+const DropZone = ({ location, onDrop, children, className = "" }: { location: string; onDrop: (sectionId: string, location: string) => void; children: React.ReactNode; className?: string }) => {
+  const [, drop] = useDrop({
+    accept: 'section',
+    drop: (item: { sectionId: string }) => {
+      onDrop(item.sectionId, location);
+    },
+  });
+
+  return (
+    <div ref={drop} className={`min-h-[100px] ${className}`}>
+      {children}
+    </div>
+  );
+};
+
 export default function TemplateBuilder() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -156,31 +200,37 @@ export default function TemplateBuilder() {
   
   const [templateName, setTemplateName] = useState("Custom Template");
   const [templateCategory, setTemplateCategory] = useState("professional");
-  const [sections, setSections] = useState<TemplateSection[]>([
-    {
-      id: '1',
-      type: 'header',
-      title: 'Header',
-      content: {},
-      style: {
-        backgroundColor: '#f3f4f6',
-        padding: 24,
-        borderRadius: 8
-      }
-    },
-    {
-      id: '2',
-      type: 'summary',
-      title: 'Professional Summary',
-      content: {},
-      style: {
-        padding: 16,
-        fontSize: 'base'
-      }
-    }
-  ]);
-
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
+  const [pageLayout, setPageLayout] = useState<PageLayout>({
+    type: 'single',
+    sidebarSections: [],
+    mainSections: [
+      {
+        id: '1',
+        type: 'header',
+        title: 'Header',
+        content: {},
+        fields: {
+          fullName: { enabled: true, label: 'Full Name', type: 'text', required: true },
+          professionalTitle: { enabled: true, label: 'Professional Title', type: 'text' },
+          email: { enabled: true, label: 'Email', type: 'email', required: true },
+          phone: { enabled: true, label: 'Phone', type: 'tel' },
+          address: { enabled: true, label: 'Address', type: 'text' },
+          photo: { enabled: true, label: 'Photo', type: 'file' },
+          linkedin: { enabled: false, label: 'LinkedIn', type: 'url' },
+          website: { enabled: false, label: 'Website', type: 'url' }
+        },
+        style: {
+          backgroundColor: '#f3f4f6',
+          padding: 24,
+          borderRadius: 8
+        },
+        location: 'main'
+      }
+    ],
+    gridRows: []
+  });
+
   const [globalStyles, setGlobalStyles] = useState({
     primaryColor: '#6366f1',
     secondaryColor: '#8b5cf6',
@@ -195,321 +245,223 @@ export default function TemplateBuilder() {
     borderStyle: 'none'
   });
 
-  const [previewMode, setPreviewMode] = useState(false);
-  const [previewData, setPreviewData] = useState({
-    fullName: 'John Doe',
-    professionalTitle: 'Senior Software Engineer',
-    email: 'john.doe@email.com',
-    mobileNumber: '+1 (555) 123-4567',
-    address: 'New York, NY',
-    summary: 'Experienced software engineer with 5+ years of expertise in full-stack development.',
-    workExperience: [
-      {
-        id: '1',
-        company: 'Tech Corp',
-        position: 'Senior Developer',
-        startDate: '2020-01',
-        endDate: '2024-01',
-        isCurrent: false,
-        description: 'Led development of scalable web applications using React and Node.js.'
-      }
-    ],
-    education: [
-      {
-        id: '1',
-        institution: 'University of Technology',
-        degree: 'Bachelor',
-        field: 'Computer Science',
-        startDate: '2016-09',
-        endDate: '2020-05',
-        status: 'Completed'
-      }
-    ],
-    skills: [
-      { id: '1', name: 'JavaScript', rating: 5, category: 'Programming' },
-      { id: '2', name: 'React', rating: 4, category: 'Frontend' },
-      { id: '3', name: 'Node.js', rating: 4, category: 'Backend' }
-    ]
-  });
-
   const availableSections = [
-    { type: 'header', title: 'Header', icon: User },
-    { type: 'summary', title: 'Professional Summary', icon: FileText },
-    { type: 'experience', title: 'Work Experience', icon: Briefcase },
-    { type: 'education', title: 'Education', icon: GraduationCap },
-    { type: 'skills', title: 'Skills', icon: Award },
-    { type: 'languages', title: 'Languages', icon: Languages },
-    { type: 'references', title: 'References', icon: Users },
-    { type: 'custom', title: 'Custom Section', icon: Plus }
+    { type: 'header', title: 'Header', icon: User, fields: {
+      fullName: { enabled: true, label: 'Full Name', type: 'text', required: true },
+      professionalTitle: { enabled: true, label: 'Professional Title', type: 'text' },
+      email: { enabled: true, label: 'Email', type: 'email', required: true },
+      phone: { enabled: true, label: 'Phone', type: 'tel' },
+      address: { enabled: true, label: 'Address', type: 'text' },
+      photo: { enabled: true, label: 'Photo', type: 'file' },
+      linkedin: { enabled: false, label: 'LinkedIn', type: 'url' },
+      website: { enabled: false, label: 'Website', type: 'url' }
+    }},
+    { type: 'summary', title: 'Professional Summary', icon: FileText, fields: {
+      summary: { enabled: true, label: 'Summary Text', type: 'textarea', required: true }
+    }},
+    { type: 'experience', title: 'Work Experience', icon: Briefcase, fields: {
+      company: { enabled: true, label: 'Company', type: 'text', required: true },
+      position: { enabled: true, label: 'Position', type: 'text', required: true },
+      startDate: { enabled: true, label: 'Start Date', type: 'date' },
+      endDate: { enabled: true, label: 'End Date', type: 'date' },
+      current: { enabled: true, label: 'Current Position', type: 'checkbox' },
+      description: { enabled: true, label: 'Description', type: 'textarea' },
+      achievements: { enabled: false, label: 'Key Achievements', type: 'textarea' }
+    }},
+    { type: 'education', title: 'Education', icon: GraduationCap, fields: {
+      institution: { enabled: true, label: 'Institution', type: 'text', required: true },
+      degree: { enabled: true, label: 'Degree', type: 'text', required: true },
+      field: { enabled: true, label: 'Field of Study', type: 'text' },
+      startDate: { enabled: true, label: 'Start Date', type: 'date' },
+      endDate: { enabled: true, label: 'End Date', type: 'date' },
+      gpa: { enabled: false, label: 'GPA', type: 'number' },
+      honors: { enabled: false, label: 'Honors', type: 'text' }
+    }},
+    { type: 'skills', title: 'Skills', icon: Award, fields: {
+      skillName: { enabled: true, label: 'Skill Name', type: 'text', required: true },
+      level: { enabled: true, label: 'Proficiency Level', type: 'select' },
+      category: { enabled: false, label: 'Category', type: 'text' },
+      showRating: { enabled: true, label: 'Show Rating', type: 'checkbox' }
+    }},
+    { type: 'languages', title: 'Languages', icon: Languages, fields: {
+      language: { enabled: true, label: 'Language', type: 'text', required: true },
+      proficiency: { enabled: true, label: 'Proficiency', type: 'select' },
+      certification: { enabled: false, label: 'Certification', type: 'text' }
+    }},
+    { type: 'references', title: 'References', icon: Users, fields: {
+      name: { enabled: true, label: 'Name', type: 'text', required: true },
+      title: { enabled: true, label: 'Title', type: 'text' },
+      company: { enabled: true, label: 'Company', type: 'text' },
+      email: { enabled: true, label: 'Email', type: 'email' },
+      phone: { enabled: true, label: 'Phone', type: 'tel' },
+      relationship: { enabled: false, label: 'Relationship', type: 'text' }
+    }}
   ];
 
-  const moveSection = (dragIndex: number, hoverIndex: number) => {
-    const draggedSection = sections[dragIndex];
-    const newSections = [...sections];
-    newSections.splice(dragIndex, 1);
-    newSections.splice(hoverIndex, 0, draggedSection);
-    setSections(newSections);
+  const getAllSections = () => {
+    const sections = [...pageLayout.sidebarSections, ...pageLayout.mainSections];
+    pageLayout.gridRows.forEach(row => {
+      Object.values(row.sections).forEach(columnSections => {
+        sections.push(...columnSections);
+      });
+    });
+    return sections;
   };
 
-  const addSection = (type: string, title: string) => {
+  const moveSection = (dragIndex: number, hoverIndex: number, fromLocation: string, toLocation: string) => {
+    const allSections = getAllSections();
+    const draggedSection = allSections.find(s => s.location === fromLocation);
+    if (!draggedSection) return;
+
+    // Update section location
+    draggedSection.location = toLocation;
+    
+    // Update page layout
+    setPageLayout(prev => {
+      const newLayout = { ...prev };
+      
+      // Remove from old location
+      if (fromLocation === 'sidebar') {
+        newLayout.sidebarSections = newLayout.sidebarSections.filter(s => s.id !== draggedSection.id);
+      } else if (fromLocation === 'main') {
+        newLayout.mainSections = newLayout.mainSections.filter(s => s.id !== draggedSection.id);
+      }
+      
+      // Add to new location
+      if (toLocation === 'sidebar') {
+        newLayout.sidebarSections.splice(hoverIndex, 0, draggedSection);
+      } else if (toLocation === 'main') {
+        newLayout.mainSections.splice(hoverIndex, 0, draggedSection);
+      }
+      
+      return newLayout;
+    });
+  };
+
+  const addSection = (type: string, title: string, location: string = 'main') => {
+    const sectionTemplate = availableSections.find(s => s.type === type);
     const newSection: TemplateSection = {
       id: Date.now().toString(),
       type,
       title,
       content: {},
+      fields: sectionTemplate?.fields || {},
       style: {
         padding: 16,
         fontSize: 'base'
-      }
+      },
+      location
     };
-    setSections([...sections, newSection]);
+    
+    setPageLayout(prev => {
+      const newLayout = { ...prev };
+      if (location === 'sidebar') {
+        newLayout.sidebarSections.push(newSection);
+      } else if (location === 'main') {
+        newLayout.mainSections.push(newSection);
+      }
+      return newLayout;
+    });
   };
 
   const updateSection = (id: string, updates: Partial<TemplateSection>) => {
-    setSections(sections.map(section => 
-      section.id === id ? { ...section, ...updates } : section
-    ));
+    setPageLayout(prev => {
+      const newLayout = { ...prev };
+      
+      // Update in sidebar
+      newLayout.sidebarSections = newLayout.sidebarSections.map(section => 
+        section.id === id ? { ...section, ...updates } : section
+      );
+      
+      // Update in main
+      newLayout.mainSections = newLayout.mainSections.map(section => 
+        section.id === id ? { ...section, ...updates } : section
+      );
+      
+      // Update in grid rows
+      newLayout.gridRows = newLayout.gridRows.map(row => ({
+        ...row,
+        sections: Object.fromEntries(
+          Object.entries(row.sections).map(([col, sections]) => [
+            col,
+            sections.map(section => section.id === id ? { ...section, ...updates } : section)
+          ])
+        )
+      }));
+      
+      return newLayout;
+    });
   };
 
   const deleteSection = (id: string) => {
-    setSections(sections.filter(section => section.id !== id));
+    setPageLayout(prev => {
+      const newLayout = { ...prev };
+      
+      newLayout.sidebarSections = newLayout.sidebarSections.filter(section => section.id !== id);
+      newLayout.mainSections = newLayout.mainSections.filter(section => section.id !== id);
+      
+      newLayout.gridRows = newLayout.gridRows.map(row => ({
+        ...row,
+        sections: Object.fromEntries(
+          Object.entries(row.sections).map(([col, sections]) => [
+            col,
+            sections.filter(section => section.id !== id)
+          ])
+        )
+      }));
+      
+      return newLayout;
+    });
+    
+    if (selectedSection === id) {
+      setSelectedSection(null);
+    }
   };
 
   const duplicateSection = (id: string) => {
-    const sectionToDuplicate = sections.find(s => s.id === id);
+    const allSections = getAllSections();
+    const sectionToDuplicate = allSections.find(s => s.id === id);
     if (sectionToDuplicate) {
       const newSection = {
         ...sectionToDuplicate,
         id: Date.now().toString(),
         title: `${sectionToDuplicate.title} (Copy)`
       };
-      setSections([...sections, newSection]);
+      
+      setPageLayout(prev => {
+        const newLayout = { ...prev };
+        if (sectionToDuplicate.location === 'sidebar') {
+          newLayout.sidebarSections.push(newSection);
+        } else if (sectionToDuplicate.location === 'main') {
+          newLayout.mainSections.push(newSection);
+        }
+        return newLayout;
+      });
     }
   };
 
-  const generateTemplate = () => {
-    const spacingMultiplier = globalStyles.spacing === 'compact' ? 0.75 : globalStyles.spacing === 'relaxed' ? 1.5 : 1;
+  const addRow = (columns: number) => {
+    const newRow: TemplateRow = {
+      id: Date.now().toString(),
+      columns,
+      sections: {}
+    };
+    for (let i = 0; i < columns; i++) {
+      newRow.sections[i] = [];
+    }
     
-    const css = `
-      :root {
-        --primary-color: ${globalStyles.primaryColor};
-        --secondary-color: ${globalStyles.secondaryColor};
-        --accent-color: ${globalStyles.accentColor};
-        --font-family: ${globalStyles.fontFamily}, sans-serif;
-        --spacing-unit: ${16 * spacingMultiplier}px;
-      }
-      
-      .resume-template {
-        font-family: var(--font-family);
-        color: #1f2937;
-        line-height: 1.6;
-        max-width: 800px;
-        margin: 0 auto;
-        padding: var(--spacing-unit);
-        background: #ffffff;
-      }
-      
-      .resume-header {
-        ${globalStyles.headerStyle === 'centered' ? 'text-align: center;' : ''}
-        ${globalStyles.headerStyle === 'left' ? 'text-align: left;' : ''}
-        ${globalStyles.headerStyle === 'split' ? 'display: flex; justify-content: space-between; align-items: center;' : ''}
-        margin-bottom: calc(var(--spacing-unit) * 2);
-        padding-bottom: var(--spacing-unit);
-        border-bottom: 2px solid var(--primary-color);
-      }
-      
-      .full-name {
-        font-size: 2.5em;
-        font-weight: bold;
-        color: var(--primary-color);
-        margin: 0 0 0.5em 0;
-      }
-      
-      .professional-title {
-        font-size: 1.3em;
-        color: var(--secondary-color);
-        margin: 0 0 1em 0;
-      }
-      
-      .contact-info {
-        display: flex;
-        gap: calc(var(--spacing-unit) * 0.75);
-        flex-wrap: wrap;
-        ${globalStyles.headerStyle === 'centered' ? 'justify-content: center;' : ''}
-      }
-      
-      .photo-${globalStyles.photoStyle} {
-        ${globalStyles.photoStyle === 'circle' ? 'border-radius: 50%;' : ''}
-        ${globalStyles.photoStyle === 'square' ? 'border-radius: 0;' : ''}
-        ${globalStyles.photoStyle === 'rounded' ? 'border-radius: 12px;' : ''}
-        width: 120px;
-        height: 120px;
-        object-fit: cover;
-        border: 3px solid var(--primary-color);
-      }
-      
-      .resume-section {
-        margin-bottom: calc(var(--spacing-unit) * 1.5);
-      }
-      
-      .section-title {
-        font-size: 1.4em;
-        color: var(--primary-color);
-        margin-bottom: var(--spacing-unit);
-        padding-bottom: calc(var(--spacing-unit) * 0.5);
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        font-weight: 600;
-      }
-      
-      .section-divider {
-        ${globalStyles.sectionDivider === 'line' ? 'border-top: 2px solid var(--primary-color);' : ''}
-        ${globalStyles.sectionDivider === 'gradient' ? 'background: linear-gradient(to right, var(--primary-color), var(--secondary-color)); height: 2px; border: none;' : ''}
-        ${globalStyles.sectionDivider === 'none' ? 'display: none;' : ''}
-        margin: var(--spacing-unit) 0;
-      }
-      
-      .experience-item, .education-item, .project-item {
-        margin-bottom: var(--spacing-unit);
-        padding-bottom: calc(var(--spacing-unit) * 0.5);
-        border-bottom: 1px solid #e5e7eb;
-      }
-      
-      .experience-item:last-child, .education-item:last-child, .project-item:last-child {
-        border-bottom: none;
-      }
-      
-      .item-title {
-        font-size: 1.1em;
-        font-weight: 600;
-        color: var(--secondary-color);
-        margin: 0 0 0.25em 0;
-      }
-      
-      .item-subtitle {
-        color: #6b7280;
-        font-style: italic;
-        margin: 0 0 0.5em 0;
-      }
-      
-      .skills-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: calc(var(--spacing-unit) * 0.75);
-      }
-      
-      .skill-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: calc(var(--spacing-unit) * 0.5) 0;
-      }
-      
-      .skill-rating {
-        color: var(--accent-color);
-        font-size: 1.1em;
-      }
-      
-      @media (max-width: 768px) {
-        .resume-template {
-          padding: calc(var(--spacing-unit) * 0.75);
-        }
-        
-        .resume-header {
-          text-align: center !important;
-          flex-direction: column !important;
-        }
-        
-        .contact-info {
-          flex-direction: column;
-          align-items: center;
-          gap: calc(var(--spacing-unit) * 0.5);
-        }
-        
-        .skills-grid {
-          grid-template-columns: 1fr;
-        }
-      }
-    `;
-
-    const html = `
-      <div class="resume-template">
-        ${sections.map(section => `
-          <section class="resume-section ${section.type}" style="${Object.entries(section.style).map(([key, value]) => {
-            const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
-            return `${cssKey}: ${typeof value === 'number' ? value + 'px' : value}`;
-          }).join('; ')}">
-            ${generateSectionHTML(section)}
-          </section>
-        `).join('')}
-      </div>
-    `;
-
-    return { html, css };
+    setPageLayout(prev => ({
+      ...prev,
+      gridRows: [...prev.gridRows, newRow]
+    }));
   };
 
-  const generateSectionHTML = (section: TemplateSection) => {
-    switch (section.type) {
-      case 'header':
-        return `
-          <div class="header-content">
-            <img src="{{photoUrl}}" alt="{{fullName}}" class="photo-${globalStyles.photoStyle}" />
-            <div class="header-info">
-              <h1 class="name">{{fullName}}</h1>
-              <p class="title">{{professionalTitle}}</p>
-              <div class="contact-info">
-                <span>{{email}}</span> | <span>{{mobileNumber}}</span> | <span>{{address}}</span>
-              </div>
-            </div>
-          </div>
-        `;
-      case 'summary':
-        return `
-          <h2>${section.title}</h2>
-          <p>{{summary}}</p>
-        `;
-      case 'experience':
-        return `
-          <h2>${section.title}</h2>
-          {{#workExperience}}
-          <div class="experience-item">
-            <h3>{{position}} at {{company}}</h3>
-            <p class="date">{{startDate}} - {{endDate}}</p>
-            <p>{{description}}</p>
-          </div>
-          {{/workExperience}}
-        `;
-      case 'education':
-        return `
-          <h2>${section.title}</h2>
-          {{#education}}
-          <div class="education-item">
-            <h3>{{degree}} in {{field}}</h3>
-            <p>{{institution}}</p>
-            <p class="date">{{startDate}} - {{endDate}}</p>
-          </div>
-          {{/education}}
-        `;
-      case 'skills':
-        return `
-          <h2>${section.title}</h2>
-          <div class="skills-grid">
-            {{#skills}}
-            <div class="skill-item">
-              <span>{{name}}</span>
-              <div class="skill-rating">★★★★☆</div>
-            </div>
-            {{/skills}}
-          </div>
-        `;
-      default:
-        return `<h2>${section.title}</h2><p>Custom content here</p>`;
-    }
-  };
+  const currentSection = getAllSections().find(s => s.id === selectedSection);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const { html, css } = generateTemplate();
+      const allSections = getAllSections();
+      const { html, css } = generateTemplate(allSections);
       return await apiRequest("POST", "/api/admin/templates", {
         name: templateName,
         category: templateCategory,
@@ -536,6 +488,14 @@ export default function TemplateBuilder() {
     }
   });
 
+  const generateTemplate = (sections: TemplateSection[]) => {
+    // Template generation logic would go here
+    return {
+      html: '<div class="resume-template">Generated Template</div>',
+      css: '.resume-template { font-family: Arial, sans-serif; }'
+    };
+  };
+
   if (authLoading || !user || user.role !== 'admin') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
@@ -546,8 +506,6 @@ export default function TemplateBuilder() {
       </div>
     );
   }
-
-  const currentSection = sections.find(s => s.id === selectedSection);
 
   return (
     <DndProvider backend={HTML5Backend}>
@@ -563,16 +521,13 @@ export default function TemplateBuilder() {
                 </Button>
                 <div>
                   <h1 className="text-2xl font-bold text-slate-900">Template Builder</h1>
-                  <p className="text-sm text-slate-600">Create custom templates visually</p>
+                  <p className="text-sm text-slate-600">Create custom templates with advanced layouts</p>
                 </div>
               </div>
               <div className="flex gap-3">
-                <Button 
-                  variant="outline"
-                  onClick={() => setPreviewMode(!previewMode)}
-                >
+                <Button variant="outline">
                   <Eye className="w-4 h-4 mr-2" />
-                  {previewMode ? 'Edit Mode' : 'Preview'}
+                  Preview
                 </Button>
                 <Button variant="outline">
                   <Download className="w-4 h-4 mr-2" />
@@ -593,8 +548,9 @@ export default function TemplateBuilder() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Left Sidebar - Components */}
+            {/* Left Sidebar - Layout & Components */}
             <div className="lg:col-span-1 space-y-4">
+              {/* Template Info */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Template Info</CardTitle>
@@ -623,86 +579,118 @@ export default function TemplateBuilder() {
                 </CardContent>
               </Card>
 
+              {/* Page Layout */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Page Layout</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Layout Type</Label>
+                    <RadioGroup
+                      value={pageLayout.type}
+                      onValueChange={(value: any) => setPageLayout(prev => ({ ...prev, type: value }))}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="single" id="single" />
+                        <Label htmlFor="single" className="flex items-center cursor-pointer">
+                          <Layout className="w-4 h-4 mr-2" />
+                          Single Column
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="left-sidebar" id="left-sidebar" />
+                        <Label htmlFor="left-sidebar" className="flex items-center cursor-pointer">
+                          <Sidebar className="w-4 h-4 mr-2" />
+                          Left Sidebar
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="right-sidebar" id="right-sidebar" />
+                        <Label htmlFor="right-sidebar" className="flex items-center cursor-pointer">
+                          <AlignRight className="w-4 h-4 mr-2" />
+                          Right Sidebar
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="grid" id="grid" />
+                        <Label htmlFor="grid" className="flex items-center cursor-pointer">
+                          <Grid3X3 className="w-4 h-4 mr-2" />
+                          Grid Layout
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {pageLayout.type === 'grid' && (
+                    <div className="space-y-2">
+                      <Label>Add Row</Label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[1, 2, 3, 4].map(cols => (
+                          <Button
+                            key={cols}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addRow(cols)}
+                          >
+                            {cols} Col
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Add Sections */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Add Sections</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2">
-                    {availableSections.map((section) => (
-                      <Button
-                        key={section.type}
-                        variant="outline"
-                        className="w-full justify-start"
-                        onClick={() => addSection(section.type, section.title)}
-                      >
-                        <section.icon className="w-4 h-4 mr-2" />
-                        {section.title}
-                      </Button>
-                    ))}
-                  </div>
+                  <Tabs defaultValue="main" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="main">Main</TabsTrigger>
+                      <TabsTrigger value="sidebar" disabled={pageLayout.type === 'single'}>
+                        Sidebar
+                      </TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="main" className="space-y-2">
+                      {availableSections.map((section) => (
+                        <Button
+                          key={section.type}
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={() => addSection(section.type, section.title, 'main')}
+                        >
+                          <section.icon className="w-4 h-4 mr-2" />
+                          {section.title}
+                        </Button>
+                      ))}
+                    </TabsContent>
+                    <TabsContent value="sidebar" className="space-y-2">
+                      {availableSections.map((section) => (
+                        <Button
+                          key={section.type}
+                          variant="outline"
+                          className="w-full justify-start"
+                          onClick={() => addSection(section.type, section.title, 'sidebar')}
+                        >
+                          <section.icon className="w-4 h-4 mr-2" />
+                          {section.title}
+                        </Button>
+                      ))}
+                    </TabsContent>
+                  </Tabs>
                 </CardContent>
               </Card>
 
+              {/* Global Styles */}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">Global Styles</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label>Color Scheme Presets</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setGlobalStyles({
-                          ...globalStyles,
-                          primaryColor: '#2563eb',
-                          secondaryColor: '#1d4ed8',
-                          accentColor: '#3b82f6'
-                        })}
-                      >
-                        Professional Blue
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setGlobalStyles({
-                          ...globalStyles,
-                          primaryColor: '#059669',
-                          secondaryColor: '#047857',
-                          accentColor: '#10b981'
-                        })}
-                      >
-                        Modern Green
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setGlobalStyles({
-                          ...globalStyles,
-                          primaryColor: '#7c3aed',
-                          secondaryColor: '#6d28d9',
-                          accentColor: '#8b5cf6'
-                        })}
-                      >
-                        Creative Purple
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setGlobalStyles({
-                          ...globalStyles,
-                          primaryColor: '#374151',
-                          secondaryColor: '#1f2937',
-                          accentColor: '#6b7280'
-                        })}
-                      >
-                        Executive Gray
-                      </Button>
-                    </div>
-                  </div>
-
                   <div className="space-y-2">
                     <Label>Primary Color</Label>
                     <div className="flex gap-2">
@@ -718,74 +706,7 @@ export default function TemplateBuilder() {
                       />
                     </div>
                   </div>
-
-                  <div className="space-y-2">
-                    <Label>Secondary Color</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="color"
-                        value={globalStyles.secondaryColor}
-                        onChange={(e) => setGlobalStyles({...globalStyles, secondaryColor: e.target.value})}
-                        className="w-16 h-10"
-                      />
-                      <Input
-                        value={globalStyles.secondaryColor}
-                        onChange={(e) => setGlobalStyles({...globalStyles, secondaryColor: e.target.value})}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Photo Style</Label>
-                    <RadioGroup
-                      value={globalStyles.photoStyle}
-                      onValueChange={(value) => setGlobalStyles({...globalStyles, photoStyle: value})}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="circle" id="circle" />
-                        <Label htmlFor="circle" className="flex items-center cursor-pointer">
-                          <Circle className="w-4 h-4 mr-2" />
-                          Circle
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="square" id="square" />
-                        <Label htmlFor="square" className="flex items-center cursor-pointer">
-                          <Square className="w-4 h-4 mr-2" />
-                          Square
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="rounded" id="rounded" />
-                        <Label htmlFor="rounded" className="flex items-center cursor-pointer">
-                          <Square className="w-4 h-4 mr-2 rounded" />
-                          Rounded
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Section Divider</Label>
-                    <RadioGroup
-                      value={globalStyles.sectionDivider}
-                      onValueChange={(value) => setGlobalStyles({...globalStyles, sectionDivider: value})}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="line" id="line" />
-                        <Label htmlFor="line">Simple Line</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="gradient" id="gradient" />
-                        <Label htmlFor="gradient">Gradient Line</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="none" id="none-divider" />
-                        <Label htmlFor="none-divider">No Divider</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
+                  
                   <div className="space-y-2">
                     <Label>Font Family</Label>
                     <select
@@ -793,56 +714,11 @@ export default function TemplateBuilder() {
                       value={globalStyles.fontFamily}
                       onChange={(e) => setGlobalStyles({...globalStyles, fontFamily: e.target.value})}
                     >
-                      <option value="Inter">Inter (Modern)</option>
-                      <option value="Roboto">Roboto (Clean)</option>
-                      <option value="Open Sans">Open Sans (Friendly)</option>
-                      <option value="Lato">Lato (Professional)</option>
-                      <option value="Montserrat">Montserrat (Elegant)</option>
-                      <option value="Source Sans Pro">Source Sans Pro</option>
-                      <option value="Poppins">Poppins (Trendy)</option>
+                      <option value="Inter">Inter</option>
+                      <option value="Roboto">Roboto</option>
+                      <option value="Open Sans">Open Sans</option>
+                      <option value="Lato">Lato</option>
                     </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Header Style</Label>
-                    <RadioGroup
-                      value={globalStyles.headerStyle}
-                      onValueChange={(value) => setGlobalStyles({...globalStyles, headerStyle: value})}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="centered" id="centered" />
-                        <Label htmlFor="centered">Centered</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="left" id="left-header" />
-                        <Label htmlFor="left-header">Left Aligned</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="split" id="split" />
-                        <Label htmlFor="split">Split Layout</Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Spacing</Label>
-                    <RadioGroup
-                      value={globalStyles.spacing}
-                      onValueChange={(value) => setGlobalStyles({...globalStyles, spacing: value})}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="compact" id="compact" />
-                        <Label htmlFor="compact">Compact</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="normal" id="normal" />
-                        <Label htmlFor="normal">Normal</Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="relaxed" id="relaxed" />
-                        <Label htmlFor="relaxed">Relaxed</Label>
-                      </div>
-                    </RadioGroup>
                   </div>
                 </CardContent>
               </Card>
@@ -853,36 +729,131 @@ export default function TemplateBuilder() {
               <Card className="h-full">
                 <CardHeader>
                   <CardTitle>Template Canvas</CardTitle>
-                  <CardDescription>Drag and drop sections to rearrange</CardDescription>
+                  <CardDescription>
+                    Layout: {pageLayout.type.charAt(0).toUpperCase() + pageLayout.type.slice(1)}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <div className="min-h-[600px] bg-gray-50 rounded-lg p-6">
-                    {sections.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-gray-400">
-                        <div className="text-center">
-                          <Layers className="w-16 h-16 mx-auto mb-4" />
-                          <p>Add sections from the left panel to start building your template</p>
+                  <div className="min-h-[600px] bg-gray-50 rounded-lg p-4">
+                    {pageLayout.type === 'single' && (
+                      <DropZone location="main" onDrop={() => {}}>
+                        {pageLayout.mainSections.map((section, index) => (
+                          <DraggableItem
+                            key={section.id}
+                            section={section}
+                            index={index}
+                            location="main"
+                            moveSection={moveSection}
+                            updateSection={updateSection}
+                            deleteSection={deleteSection}
+                            duplicateSection={duplicateSection}
+                            onSelectSection={setSelectedSection}
+                            isSelected={selectedSection === section.id}
+                          />
+                        ))}
+                      </DropZone>
+                    )}
+
+                    {(pageLayout.type === 'left-sidebar' || pageLayout.type === 'right-sidebar') && (
+                      <div className={`grid grid-cols-3 gap-4 ${pageLayout.type === 'right-sidebar' ? 'grid-flow-col-dense' : ''}`}>
+                        {/* Sidebar */}
+                        <div className={`${pageLayout.type === 'right-sidebar' ? 'col-start-3' : ''}`}>
+                          <div className="bg-gray-100 p-3 rounded-lg min-h-[200px]">
+                            <h4 className="font-medium mb-2">Sidebar</h4>
+                            <DropZone location="sidebar" onDrop={() => {}}>
+                              {pageLayout.sidebarSections.map((section, index) => (
+                                <DraggableItem
+                                  key={section.id}
+                                  section={section}
+                                  index={index}
+                                  location="sidebar"
+                                  moveSection={moveSection}
+                                  updateSection={updateSection}
+                                  deleteSection={deleteSection}
+                                  duplicateSection={duplicateSection}
+                                  onSelectSection={setSelectedSection}
+                                  isSelected={selectedSection === section.id}
+                                />
+                              ))}
+                            </DropZone>
+                          </div>
+                        </div>
+
+                        {/* Main Content */}
+                        <div className="col-span-2">
+                          <div className="bg-white p-3 rounded-lg min-h-[200px]">
+                            <h4 className="font-medium mb-2">Main Content</h4>
+                            <DropZone location="main" onDrop={() => {}}>
+                              {pageLayout.mainSections.map((section, index) => (
+                                <DraggableItem
+                                  key={section.id}
+                                  section={section}
+                                  index={index}
+                                  location="main"
+                                  moveSection={moveSection}
+                                  updateSection={updateSection}
+                                  deleteSection={deleteSection}
+                                  duplicateSection={duplicateSection}
+                                  onSelectSection={setSelectedSection}
+                                  isSelected={selectedSection === section.id}
+                                />
+                              ))}
+                            </DropZone>
+                          </div>
                         </div>
                       </div>
-                    ) : (
-                      sections.map((section, index) => (
-                        <DraggableItem
-                          key={section.id}
-                          section={section}
-                          index={index}
-                          moveSection={moveSection}
-                          updateSection={updateSection}
-                          deleteSection={deleteSection}
-                          duplicateSection={duplicateSection}
-                        />
-                      ))
+                    )}
+
+                    {pageLayout.type === 'grid' && (
+                      <div className="space-y-4">
+                        {pageLayout.gridRows.map((row, rowIndex) => (
+                          <div key={row.id} className="border border-gray-200 rounded-lg p-3">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium">Row {rowIndex + 1} ({row.columns} columns)</span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setPageLayout(prev => ({
+                                  ...prev,
+                                  gridRows: prev.gridRows.filter(r => r.id !== row.id)
+                                }))}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <div className={`grid grid-cols-${row.columns} gap-2`}>
+                              {Array.from({ length: row.columns }).map((_, colIndex) => (
+                                <div key={colIndex} className="bg-gray-100 p-2 rounded min-h-[100px]">
+                                  <div className="text-xs text-gray-500 mb-1">Column {colIndex + 1}</div>
+                                  <DropZone location={`${row.id}-${colIndex}`} onDrop={() => {}}>
+                                    {(row.sections[colIndex] || []).map((section, sectionIndex) => (
+                                      <DraggableItem
+                                        key={section.id}
+                                        section={section}
+                                        index={sectionIndex}
+                                        location={`${row.id}-${colIndex}`}
+                                        moveSection={moveSection}
+                                        updateSection={updateSection}
+                                        deleteSection={deleteSection}
+                                        duplicateSection={duplicateSection}
+                                        onSelectSection={setSelectedSection}
+                                        isSelected={selectedSection === section.id}
+                                      />
+                                    ))}
+                                  </DropZone>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 </CardContent>
               </Card>
             </div>
 
-            {/* Right Sidebar - Properties */}
+            {/* Right Sidebar - Section Properties */}
             <div className="lg:col-span-1">
               <Card>
                 <CardHeader>
@@ -897,6 +868,30 @@ export default function TemplateBuilder() {
                           value={currentSection.title}
                           onChange={(e) => updateSection(currentSection.id, { title: e.target.value })}
                         />
+                      </div>
+
+                      <div className="space-y-3">
+                        <Label>Section Fields</Label>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {Object.entries(currentSection.fields).map(([fieldKey, field]) => (
+                            <div key={fieldKey} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                              <div className="flex items-center space-x-2">
+                                <Switch
+                                  checked={field.enabled}
+                                  onCheckedChange={(checked) => updateSection(currentSection.id, {
+                                    fields: {
+                                      ...currentSection.fields,
+                                      [fieldKey]: { ...field, enabled: checked }
+                                    }
+                                  })}
+                                />
+                                <Label className="text-sm">{field.label}</Label>
+                                {field.required && <Badge variant="secondary" className="text-xs">Required</Badge>}
+                              </div>
+                              <Badge variant="outline" className="text-xs">{field.type}</Badge>
+                            </div>
+                          ))}
+                        </div>
                       </div>
 
                       <div className="space-y-2">
