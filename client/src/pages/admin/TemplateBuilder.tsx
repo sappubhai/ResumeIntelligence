@@ -115,6 +115,27 @@ interface DraggableItemProps {
   isSelected: boolean;
 }
 
+// Draggable source for available sections
+const DraggableSourceSection = ({ section, onAddSection }: { section: any; onAddSection: (type: string, title: string) => void }) => {
+  const [, drag] = useDrag({
+    type: 'new-section',
+    item: { sectionType: section.type, sectionTitle: section.title },
+  });
+
+  return (
+    <div
+      ref={drag}
+      className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 cursor-grab transition-colors"
+      onClick={() => onAddSection(section.type, section.title)}
+    >
+      <div className="flex items-center gap-2">
+        <section.icon className="w-4 h-4" />
+        <span className="text-sm font-medium">{section.title}</span>
+      </div>
+    </div>
+  );
+};
+
 const DraggableItem = ({ section, index, location, moveSection, updateSection, deleteSection, duplicateSection, onSelectSection, isSelected }: DraggableItemProps) => {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -193,11 +214,23 @@ const DraggableItem = ({ section, index, location, moveSection, updateSection, d
   );
 };
 
-const DropZone = ({ location, onDrop, children, className = "", showAddButton = false, onAddSection }: { location: string; onDrop: (sectionId: string, location: string) => void; children: React.ReactNode; className?: string, showAddButton?: boolean, onAddSection?: () => void }) => {
+const DropZone = ({ location, onDrop, children, className = "", showAddButton = false, onAddSection, onNewSectionDrop }: { 
+  location: string; 
+  onDrop: (sectionId: string, location: string) => void; 
+  children: React.ReactNode; 
+  className?: string; 
+  showAddButton?: boolean; 
+  onAddSection?: () => void;
+  onNewSectionDrop?: (sectionType: string, sectionTitle: string, location: string) => void;
+}) => {
   const [, drop] = useDrop({
-    accept: 'section',
-    drop: (item: { sectionId: string }) => {
-      onDrop(item.sectionId, location);
+    accept: ['section', 'new-section'],
+    drop: (item: { sectionId?: string; sectionType?: string; sectionTitle?: string }) => {
+      if (item.sectionId) {
+        onDrop(item.sectionId, location);
+      } else if (item.sectionType && item.sectionTitle && onNewSectionDrop) {
+        onNewSectionDrop(item.sectionType, item.sectionTitle, location);
+      }
     },
   });
 
@@ -408,6 +441,10 @@ export default function TemplateBuilder() {
     // It is here to satisfy the DropZone's onDrop prop.
   };
 
+  const handleNewSectionDrop = (sectionType: string, sectionTitle: string, location: string) => {
+    addSection(sectionType, sectionTitle, location);
+  };
+
   const addSection = (type: string, title: string, location: string = 'main') => {
     const sectionTemplate = availableSections.find(s => s.type === type);
     const newSection: TemplateSection = {
@@ -429,22 +466,30 @@ export default function TemplateBuilder() {
         newLayout.sidebarSections.push(newSection);
       } else if (location === 'main') {
         newLayout.mainSections.push(newSection);
-      } else if (location.startsWith('grid')) {
-        const [rowId, colIndex] = location.split('-');
-        const rowIndex = newLayout.gridRows.findIndex(row => row.id === rowId);
-        if (rowIndex !== -1) {
-          if (!newLayout.gridRows[rowIndex].sections[parseInt(colIndex)]) {
-            newLayout.gridRows[rowIndex].sections[parseInt(colIndex)] = [];
+      } else if (location.startsWith('grid-')) {
+        const parts = location.split('-');
+        if (parts.length >= 3) {
+          const rowId = parts[1];
+          const colIndex = parseInt(parts[2]);
+          const rowIndex = newLayout.gridRows.findIndex(row => row.id === rowId);
+          if (rowIndex !== -1) {
+            if (!newLayout.gridRows[rowIndex].sections[colIndex]) {
+              newLayout.gridRows[rowIndex].sections[colIndex] = [];
+            }
+            newLayout.gridRows[rowIndex].sections[colIndex].push(newSection);
           }
-          newLayout.gridRows[rowIndex].sections[parseInt(colIndex)].push(newSection);
         }
-      } else if (location.startsWith('custom')) {
-        const [rowId, colId] = location.split('-');
-        const rowIndex = newLayout.customRows.findIndex(row => row.id === rowId);
-        if (rowIndex !== -1) {
-          const colIndex = newLayout.customRows[rowIndex].columns.findIndex(col => col.id === colId);
-          if (colIndex !== -1) {
-            newLayout.customRows[rowIndex].columns[colIndex].sections.push(newSection);
+      } else if (location.startsWith('custom-')) {
+        const parts = location.split('-');
+        if (parts.length >= 3) {
+          const rowId = parts[1];
+          const colId = parts[2];
+          const rowIndex = newLayout.customRows.findIndex(row => row.id === rowId);
+          if (rowIndex !== -1) {
+            const colIndex = newLayout.customRows[rowIndex].columns.findIndex(col => col.id === colId);
+            if (colIndex !== -1) {
+              newLayout.customRows[rowIndex].columns[colIndex].sections.push(newSection);
+            }
           }
         }
       }
@@ -958,18 +1003,22 @@ export default function TemplateBuilder() {
                 <TabsContent value="sections" className="space-y-4">
                   <div className="space-y-3">
                     <h3 className="font-medium text-sm text-gray-700">Available Sections</h3>
+                    <p className="text-xs text-gray-500">Drag sections to canvas or click to add</p>
                     <ScrollArea className="h-[400px] pr-2">
-                      {availableSections.map((section) => (
-                        <div
-                          key={section.type}
-                          className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 cursor-grab transition-colors"
-                        >
-                          <div className="flex items-center gap-2">
-                            <section.icon className="w-4 h-4" />
-                            <span className="text-sm font-medium">{section.title}</span>
-                          </div>
-                        </div>
-                      ))}
+                      <div className="space-y-2">
+                        {availableSections.map((section) => (
+                          <DraggableSourceSection
+                            key={section.type}
+                            section={section}
+                            onAddSection={(type, title) => {
+                              setTargetLocation('main');
+                              setShowSectionModal(true);
+                              // Auto-add to main if modal is not needed
+                              addSection(type, title, 'main');
+                            }}
+                          />
+                        ))}
+                      </div>
                     </ScrollArea>
                   </div>
                 </TabsContent>
@@ -1023,34 +1072,17 @@ export default function TemplateBuilder() {
                       </RadioGroup>
                     </div>
 
-                    {pageLayout.type === 'grid' && (
-                      <div className="space-y-2">
-                        <Label>Add Grid Rows</Label>
-                        <div className="space-y-2">
-                          {[1, 2, 3, 4, 5].map(cols => (
-                            <Button
-                              key={cols}
-                              variant="outline"
-                              size="sm"
-                              className="w-full"
-                              onClick={() => addRow(cols)}
-                            >
-                              Add {cols} Column Row
-                            </Button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {pageLayout.type === 'custom' && (
-                      <div className="space-y-2">
-                        <Label>Add Custom Rows</Label>
+                    {/* Layout Controls for All Types */}
+                    <div className="space-y-3">
+                      <Label>Layout Controls</Label>
+                      
+                      {(pageLayout.type === 'single' || pageLayout.type === 'left-sidebar' || pageLayout.type === 'right-sidebar') && (
                         <div className="space-y-2">
                           <Button
                             variant="outline"
                             size="sm"
                             className="w-full"
-                            onClick={() => addCustomRow('header')}
+                            onClick={() => addRow(1)}
                           >
                             Add Header Row
                           </Button>
@@ -1058,21 +1090,72 @@ export default function TemplateBuilder() {
                             variant="outline"
                             size="sm"
                             className="w-full"
-                            onClick={() => addCustomRow('sidebar')}
+                            onClick={() => addRow(2)}
                           >
-                            Add Sidebar Row
+                            Add Two Column Row
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
                             className="w-full"
-                            onClick={() => addCustomRow('content')}
+                            onClick={() => addRow(3)}
                           >
-                            Add Content Row
+                            Add Three Column Row
                           </Button>
                         </div>
-                      </div>
-                    )}
+                      )}
+
+                      {pageLayout.type === 'grid' && (
+                        <div className="space-y-2">
+                          <Label>Add Grid Rows</Label>
+                          <div className="space-y-2">
+                            {[1, 2, 3, 4, 5].map(cols => (
+                              <Button
+                                key={cols}
+                                variant="outline"
+                                size="sm"
+                                className="w-full"
+                                onClick={() => addRow(cols)}
+                              >
+                                Add {cols} Column Row
+                              </Button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {pageLayout.type === 'custom' && (
+                        <div className="space-y-2">
+                          <Label>Add Custom Rows</Label>
+                          <div className="space-y-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => addCustomRow('header')}
+                            >
+                              Add Header Row (100%)
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => addCustomRow('sidebar')}
+                            >
+                              Add Sidebar Row (25% + 75%)
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => addCustomRow('content')}
+                            >
+                              Add Content Row (50% + 50%)
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </TabsContent>
 
@@ -1189,19 +1272,22 @@ export default function TemplateBuilder() {
 
                 <div className="flex gap-2">
                   <Button variant="outline" onClick={() => {
-                      const allSections = getAllSections();
-                      const { html, css } = generateTemplate(allSections);
-                      const previewWindow = window.open();
-                      previewWindow?.document.open();
-                      previewWindow?.document.write(`
-                        <html>
-                          <head>
-                            <style>${css}</style>
-                          </head>
-                          <body>${html}</body>
-                        </html>
-                      `);
-                      previewWindow?.document.close();
+                      const { html, css } = generateTemplate(getAllSections());
+                      const previewWindow = window.open('', '_blank', 'width=800,height=600');
+                      if (previewWindow) {
+                        previewWindow.document.open();
+                        previewWindow.document.write(`
+                          <!DOCTYPE html>
+                          <html>
+                            <head>
+                              <title>Template Preview</title>
+                              <style>${css}</style>
+                            </head>
+                            <body>${html}</body>
+                          </html>
+                        `);
+                        previewWindow.document.close();
+                      }
                     }}>
                     <Eye className="w-4 h-4 mr-2" />
                     Preview
@@ -1219,7 +1305,14 @@ export default function TemplateBuilder() {
               {/* Template Canvas */}
               <div className="bg-white rounded-lg shadow-sm border min-h-[800px] p-8 mx-auto max-w-4xl">
                 {pageLayout.type === 'single' && (
-                  <DropZone location="main" onDrop={handleSectionDrop} className="space-y-4" showAddButton onAddSection={() => handleAddSectionToLocation('main')}>
+                  <DropZone 
+                    location="main" 
+                    onDrop={handleSectionDrop} 
+                    onNewSectionDrop={handleNewSectionDrop}
+                    className="space-y-4" 
+                    showAddButton 
+                    onAddSection={() => handleAddSectionToLocation('main')}
+                  >
                     {pageLayout.mainSections.map((section, index) => (
                       <DraggableItem
                         key={section.id}
@@ -1241,7 +1334,14 @@ export default function TemplateBuilder() {
                   <div className={`grid gap-6 ${pageLayout.type === 'left-sidebar' ? 'grid-cols-[300px_1fr]' : 'grid-cols-[1fr_300px]'}`}>
                     {pageLayout.type === 'left-sidebar' && (
                       <>
-                        <DropZone location="sidebar" onDrop={handleSectionDrop} className="space-y-4" showAddButton onAddSection={() => handleAddSectionToLocation('sidebar')}>
+                        <DropZone 
+                          location="sidebar" 
+                          onDrop={handleSectionDrop} 
+                          onNewSectionDrop={handleNewSectionDrop}
+                          className="space-y-4 bg-gray-50 p-4 rounded-lg" 
+                          showAddButton 
+                          onAddSection={() => handleAddSectionToLocation('sidebar')}
+                        >
                           <h3 className="font-medium text-sm text-gray-600 mb-4">Sidebar</h3>
                           {pageLayout.sidebarSections.map((section, index) => (
                             <DraggableItem
@@ -1258,7 +1358,14 @@ export default function TemplateBuilder() {
                             />
                           ))}
                         </DropZone>
-                        <DropZone location="main" onDrop={handleSectionDrop} className="space-y-4" showAddButton onAddSection={() => handleAddSectionToLocation('main')}>
+                        <DropZone 
+                          location="main" 
+                          onDrop={handleSectionDrop} 
+                          onNewSectionDrop={handleNewSectionDrop}
+                          className="space-y-4" 
+                          showAddButton 
+                          onAddSection={() => handleAddSectionToLocation('main')}
+                        >
                           <h3 className="font-medium text-sm text-gray-600 mb-4">Main Content</h3>
                           {pageLayout.mainSections.map((section, index) => (
                             <DraggableItem
@@ -1280,7 +1387,14 @@ export default function TemplateBuilder() {
 
                     {pageLayout.type === 'right-sidebar' && (
                       <>
-                        <DropZone location="main" onDrop={handleSectionDrop} className="space-y-4" showAddButton onAddSection={() => handleAddSectionToLocation('main')}>
+                        <DropZone 
+                          location="main" 
+                          onDrop={handleSectionDrop} 
+                          onNewSectionDrop={handleNewSectionDrop}
+                          className="space-y-4" 
+                          showAddButton 
+                          onAddSection={() => handleAddSectionToLocation('main')}
+                        >
                           <h3 className="font-medium text-sm text-gray-600 mb-4">Main Content</h3>
                           {pageLayout.mainSections.map((section, index) => (
                             <DraggableItem
@@ -1297,7 +1411,14 @@ export default function TemplateBuilder() {
                             />
                           ))}
                         </DropZone>
-                        <DropZone location="sidebar" onDrop={handleSectionDrop} className="space-y-4" showAddButton onAddSection={() => handleAddSectionToLocation('sidebar')}>
+                        <DropZone 
+                          location="sidebar" 
+                          onDrop={handleSectionDrop} 
+                          onNewSectionDrop={handleNewSectionDrop}
+                          className="space-y-4 bg-gray-50 p-4 rounded-lg" 
+                          showAddButton 
+                          onAddSection={() => handleAddSectionToLocation('sidebar')}
+                        >
                           <h3 className="font-medium text-sm text-gray-600 mb-4">Sidebar</h3>
                           {pageLayout.sidebarSections.map((section, index) => (
                             <DraggableItem
@@ -1328,6 +1449,7 @@ export default function TemplateBuilder() {
                             key={colIndex}
                             location={`grid-${row.id}-${colIndex}`}
                             onDrop={handleSectionDrop}
+                            onNewSectionDrop={handleNewSectionDrop}
                             className="border-2 border-dashed border-gray-200 rounded-lg p-4 min-h-[200px]"
                             showAddButton
                             onAddSection={() => handleAddSectionToLocation(`grid-${row.id}-${colIndex}`)}
@@ -1379,22 +1501,35 @@ export default function TemplateBuilder() {
                               key={column.id}
                               location={`custom-${row.id}-${column.id}`}
                               onDrop={handleSectionDrop}
+                              onNewSectionDrop={handleNewSectionDrop}
                               className="border border-gray-200 rounded p-3 min-h-[150px] flex-1"
                               style={{ width: `${column.width}%` }}
                               showAddButton
                               onAddSection={() => handleAddSectionToLocation(`custom-${row.id}-${column.id}`)}
                             >
-                              <div className="flex justify-between items-center mb-2">
-                                <span className="text-xs text-gray-500">
-                                  {Math.round(column.width)}%
-                                </span>
+                              <div className="flex flex-col gap-2 mb-2">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-gray-500">Width:</span>
+                                  <Input
+                                    type="number"
+                                    min="5"
+                                    max="95"
+                                    value={Math.round(column.width)}
+                                    onChange={(e) => {
+                                      const newWidth = parseInt(e.target.value) || 10;
+                                      updateCustomColumnWidth(row.id, column.id, newWidth);
+                                    }}
+                                    className="w-16 h-6 text-xs"
+                                  />
+                                  <span className="text-xs text-gray-500">%</span>
+                                </div>
                                 <input
                                   type="range"
-                                  min="10"
-                                  max="90"
+                                  min="5"
+                                  max="95"
                                   value={column.width}
                                   onChange={(e) => updateCustomColumnWidth(row.id, column.id, parseInt(e.target.value))}
-                                  className="w-16 h-1"
+                                  className="w-full h-1"
                                 />
                               </div>
                               {column.sections.map((section, sectionIndex) => (
