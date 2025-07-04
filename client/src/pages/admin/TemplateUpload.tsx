@@ -110,7 +110,23 @@ export default function TemplateUpload() {
   });
 
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file) {
+      toast({
+        title: "No File Selected",
+        description: "Please select a file to upload.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!templateName && !file.name) {
+      toast({
+        title: "Template Name Required",
+        description: "Please provide a template name.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     setConverting(true);
     setConversionProgress(0);
@@ -128,7 +144,7 @@ export default function TemplateUpload() {
 
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('name', templateName || file.name.replace(/\.[^/.]+$/, ""));
+    formData.append('name', templateName || (file.name ? file.name.replace(/\.[^/.]+$/, "") : "Untitled Template"));
     formData.append('description', templateDescription);
     formData.append('category', templateCategory);
 
