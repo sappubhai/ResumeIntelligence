@@ -110,60 +110,77 @@ function extractWordStructure(html: string): string {
 }
 
 async function convertToHTMLTemplate(textContent: string, structuralInfo: string): Promise<{ html: string, css: string }> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      console.warn('GEMINI_API_KEY not found, using fallback template');
+      return {
+        html: generateFallbackHTML(),
+        css: generateFallbackCSS()
+      };
+    }
 
-  const prompt = `You are an expert web developer specializing in resume template conversion. Convert the following resume document into a professional HTML template with corresponding CSS.
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-TASK: Create an HTML template that replicates the visual layout and styling of the original document as closely as possible (90%+ accuracy).
+    const prompt = `You are an expert web developer. Convert this resume to HTML template with CSS.
 
 REQUIREMENTS:
-1. Use placeholder variables in {{variableName}} format for dynamic content
-2. Maintain the original layout structure, spacing, and visual hierarchy
-3. Create responsive design that works on different screen sizes
-4. Use modern CSS techniques (flexbox, grid where appropriate)
-5. Ensure professional typography and spacing
-6. Include all sections present in the original document
+1. Use {{variableName}} for dynamic content like {{fullName}}, {{email}}, {{mobileNumber}}, {{address}}, {{professionalTitle}}, {{summary}}, {{position}}, {{company}}, {{startDate}}, {{endDate}}, {{description}}, {{degree}}, {{field}}, {{institution}}, {{skills}}
+2. Return valid JSON with "html" and "css" properties
+3. Make it professional and clean
 
-PLACEHOLDER VARIABLES TO USE:
-{{fullName}}, {{professionalTitle}}, {{email}}, {{mobileNumber}}, {{address}}, {{linkedinId}}, {{summary}}, {{workExperience}}, {{education}}, {{skills}}, {{certifications}}, {{projects}}, {{languages}}, {{references}}, {{personalInfo}}
+CONTENT:
+${textContent.substring(0, 2000)}
 
-STRUCTURAL ANALYSIS:
-${structuralInfo}
+STRUCTURE:
+${structuralInfo.substring(0, 500)}
 
-DOCUMENT CONTENT:
-${textContent}
-
-RESPONSE FORMAT: Return a JSON object with "html" and "css" properties. The HTML should be a complete template structure, and CSS should provide professional styling that matches the original layout.
-
-Example structure:
+Return only valid JSON:
 {
-  "html": "<div class='resume-template'>...</div>",
-  "css": ".resume-template { ... }"
-}
+  "html": "template here",
+  "css": "styles here"
+}`;
 
-Focus on:
-- Font hierarchy and sizes
-- Section spacing and margins
-- Color scheme (professional)
-- Layout structure (single/multi-column)
-- Headers and dividers
-- Contact information layout
-- List styling for experience/education
-- Skills presentation format`;
+    const result = await model.generateContent(prompt);
+    const response = result.response.text();
 
-  const result = await model.generateContent(prompt);
-  const response = result.response.text();
+    // Multiple attempts to parse the response
+    let parsed = null;
+    
+    // Try direct parsing
+    try {
+      parsed = JSON.parse(response);
+    } catch (e) {
+      // Try cleaning markdown
+      try {
+        const cleaned = response.replace(/```json\s*|\s*```/g, '').trim();
+        parsed = JSON.parse(cleaned);
+      } catch (e2) {
+        // Try extracting JSON from text
+        try {
+          const jsonMatch = response.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            parsed = JSON.parse(jsonMatch[0]);
+          }
+        } catch (e3) {
+          console.error('All parsing attempts failed:', e3);
+        }
+      }
+    }
 
-  try {
-    const cleanResponse = response.replace(/```json|```/g, '').trim();
-    const parsed = JSON.parse(cleanResponse);
-    return {
-      html: parsed.html || generateFallbackHTML(),
-      css: parsed.css || generateFallbackCSS()
-    };
-  } catch (parseError) {
-    console.error('Error parsing AI response:', parseError);
-    // Return fallback template
+    if (parsed && parsed.html && parsed.css) {
+      return {
+        html: parsed.html,
+        css: parsed.css
+      };
+    } else {
+      console.warn('AI response invalid, using fallback template');
+      return {
+        html: generateFallbackHTML(),
+        css: generateFallbackCSS()
+      };
+    }
+  } catch (error) {
+    console.error('Error in AI conversion:', error);
     return {
       html: generateFallbackHTML(),
       css: generateFallbackCSS()
@@ -182,59 +199,40 @@ function generateFallbackHTML(): string {
             <span class="email">{{email}}</span>
             <span class="phone">{{mobileNumber}}</span>
             <span class="address">{{address}}</span>
-            {{#if linkedinId}}<span class="linkedin">{{linkedinId}}</span>{{/if}}
+            <span class="linkedin">{{linkedinId}}</span>
           </div>
         </div>
       </header>
 
-      {{#if summary}}
       <section class="summary-section">
         <h3>Professional Summary</h3>
         <p>{{summary}}</p>
       </section>
-      {{/if}}
 
-      {{#if workExperience}}
       <section class="experience-section">
         <h3>Work Experience</h3>
-        {{#each workExperience}}
         <div class="experience-item">
           <h4>{{position}} - {{company}}</h4>
-          <p class="date-range">{{startDate}} - {{#if isCurrent}}Present{{else}}{{endDate}}{{/if}}</p>
+          <p class="date-range">{{startDate}} - {{endDate}}</p>
           <p class="description">{{description}}</p>
         </div>
-        {{/each}}
       </section>
-      {{/if}}
 
-      {{#if education}}
       <section class="education-section">
         <h3>Education</h3>
-        {{#each education}}
         <div class="education-item">
           <h4>{{degree}} in {{field}}</h4>
           <p class="institution">{{institution}}</p>
           <p class="date-range">{{startDate}} - {{endDate}}</p>
         </div>
-        {{/each}}
       </section>
-      {{/if}}
 
-      {{#if skills}}
       <section class="skills-section">
         <h3>Skills</h3>
-        <div class="skills-grid">
-          {{#each skills}}
-          <div class="skill-item">
-            <span class="skill-name">{{name}}</span>
-            <div class="skill-rating">
-              {{#repeat rating}}★{{/repeat}}{{#repeat (subtract 5 rating)}}☆{{/repeat}}
-            </div>
-          </div>
-          {{/each}}
+        <div class="skills-list">
+          <span class="skill-item">{{skills}}</span>
         </div>
       </section>
-      {{/if}}
     </div>
   `;
 }
