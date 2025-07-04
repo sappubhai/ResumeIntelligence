@@ -51,6 +51,23 @@ export async function generateResumeHTML(resume: Resume, template: Template): Pr
     html = html.replace(/\{\{mobileNumber\}\}/g, resume.mobileNumber || '');
     html = html.replace(/\{\{address\}\}/g, resume.address || '');
     html = html.replace(/\{\{summary\}\}/g, resume.summary || '');
+    html = html.replace(/\{\{dateOfBirth\}\}/g, resume.dateOfBirth || '');
+    html = html.replace(/\{\{linkedinId\}\}/g, resume.linkedinId || '');
+    html = html.replace(/\{\{githubId\}\}/g, resume.githubId || '');
+    html = html.replace(/\{\{portfolioWebsite\}\}/g, resume.portfolioWebsite || '');
+    html = html.replace(/\{\{careerHighlights\}\}/g, resume.careerHighlights || '');
+    html = html.replace(/\{\{totalExperience\}\}/g, resume.totalExperience || '');
+    html = html.replace(/\{\{currentSalary\}\}/g, resume.currentSalary || '');
+    html = html.replace(/\{\{expectedSalary\}\}/g, resume.expectedSalary || '');
+    html = html.replace(/\{\{noticePeriod\}\}/g, resume.noticePeriod || '');
+    
+    // Handle photo URL conditionally
+    if (resume.photoUrl) {
+      html = html.replace(/\{\{#if photoUrl\}\}(.*?)\{\{\/if\}\}/gs, '$1');
+      html = html.replace(/\{\{photoUrl\}\}/g, resume.photoUrl);
+    } else {
+      html = html.replace(/\{\{#if photoUrl\}\}(.*?)\{\{\/if\}\}/gs, '');
+    }
 
     // Handle work experience array with proper Handlebars-style replacement
     if (resume.workExperience && Array.isArray(resume.workExperience)) {
@@ -112,7 +129,63 @@ export async function generateResumeHTML(resume: Resume, template: Template): Pr
       }).join(', ');
 
       html = html.replace(/\{\{skills\}\}/g, skillsHtml);
+      html = html.replace(/\{\{#each skills\}\}.*?\{\{\/each\}\}/gs, skillsHtml);
     }
+
+    // Handle certifications if present
+    if (resume.certifications && Array.isArray(resume.certifications)) {
+      const certificationsHtml = resume.certifications.map(cert => {
+        return `
+          <div class="certification-item">
+            <h4>${cert.name || ''}</h4>
+            <p class="issuer">${cert.issuer || ''}</p>
+            <p class="date">${cert.issueDate || ''}</p>
+          </div>
+        `;
+      }).join('');
+
+      html = html.replace(/\{\{#each certifications\}\}.*?\{\{\/each\}\}/gs, certificationsHtml);
+    }
+
+    // Handle projects if present
+    if (resume.projects && Array.isArray(resume.projects)) {
+      const projectsHtml = resume.projects.map(project => {
+        return `
+          <div class="project-item">
+            <h4>${project.name || ''}</h4>
+            <p class="description">${project.description || ''}</p>
+            <p class="technologies">${project.technologies || ''}</p>
+          </div>
+        `;
+      }).join('');
+
+      html = html.replace(/\{\{#each projects\}\}.*?\{\{\/each\}\}/gs, projectsHtml);
+    }
+
+    // Handle languages if present
+    if (resume.languages && Array.isArray(resume.languages)) {
+      const languagesHtml = resume.languages.map(lang => {
+        return `<span class="language">${lang.name || lang} (${lang.proficiency || ''})</span>`;
+      }).join(', ');
+
+      html = html.replace(/\{\{#each languages\}\}.*?\{\{\/each\}\}/gs, languagesHtml);
+    }
+
+    // Handle additional sections
+    if (resume.achievements && Array.isArray(resume.achievements)) {
+      const achievementsHtml = resume.achievements.map(achievement => {
+        return `<li>${achievement.description || achievement}</li>`;
+      }).join('');
+
+      html = html.replace(/\{\{#each achievements\}\}.*?\{\{\/each\}\}/gs, `<ul>${achievementsHtml}</ul>`);
+    }
+
+    // Clean up any remaining Handlebars expressions
+    html = html.replace(/\{\{#if.*?\}\}/g, '');
+    html = html.replace(/\{\{\/if\}\}/g, '');
+    html = html.replace(/\{\{#each.*?\}\}/g, '');
+    html = html.replace(/\{\{\/each\}\}/g, '');
+    html = html.replace(/\{\{[^}]+\}\}/g, ''); // Remove any remaining variables
 
     // Combine HTML with CSS
     const fullHtml = `

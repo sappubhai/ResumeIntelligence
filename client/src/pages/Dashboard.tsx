@@ -445,16 +445,25 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </div>
+                      <TemplatePreview
+                        template={template}
+                        colorIndex={index % 4}
+                        compact={false}
+                        previewUrl={selectedResumeForDownload ? `/api/resumes/${selectedResumeForDownload}/preview?templateId=${template.id}` : undefined}
+                      />
 
-                      <h4 className="font-medium text-neutral-800 mb-1">{template.name}</h4>
-                      <p className="text-sm text-neutral-500 mb-3">{template.description}</p>
+                      <div className="mt-3">
+                        <h4 className="font-medium text-neutral-800 mb-1">
+                          {template.name}</h4>
+                        <p className="text-sm text-neutral-500 mb-3">{template.description}</p>
 
-                      <Button 
-                        className="w-full bg-neutral-100 hover:bg-primary hover:text-white text-neutral-700 group-hover:bg-primary group-hover:text-white transition-all"
-                        size="sm"
-                      >
-                        Use Template
-                      </Button>
+                        <Button 
+                          className="w-full bg-neutral-100 hover:bg-primary hover:text-white text-neutral-700 group-hover:bg-primary group-hover:text-white transition-all"
+                          size="sm"
+                        >
+                          Use Template
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>

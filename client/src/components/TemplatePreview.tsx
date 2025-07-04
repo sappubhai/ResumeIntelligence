@@ -1,25 +1,24 @@
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { FileText } from "lucide-react";
 
-interface TemplatePreviewProps {
-  template: {
+interface Template {
     id: number;
     name: string;
     description?: string;
     category: string;
-  };
-  colorIndex?: number;
+}
+
+interface TemplatePreviewProps {
+  template: Template;
+  colorIndex: number;
   compact?: boolean;
+  previewUrl?: string;
   className?: string;
 }
 
-export default function TemplatePreview({ 
-  template, 
-  colorIndex = 0, 
-  compact = false,
-  className 
-}: TemplatePreviewProps) {
+export default function TemplatePreview({ template, colorIndex, compact = false, previewUrl, className }: TemplatePreviewProps) {
   const getColorClasses = (index: number) => {
     const colors = [
       {
@@ -188,7 +187,22 @@ export default function TemplatePreview({
   return (
     <div className={cn("", className)}>
       <div className={`bg-gradient-to-br ${colorClasses.bg} rounded-lg p-6 mb-4`}>
-        {renderTemplateLayout()}
+        {previewUrl ? (
+          <div className="overflow-hidden">
+            <iframe
+              src={previewUrl}
+              className="w-full h-full border-0 pointer-events-none"
+              style={{ 
+                transform: 'scale(0.15)', 
+                transformOrigin: 'top left',
+                width: '667%',
+                height: '667%'
+              }}
+            />
+          </div>
+        ) : (
+          renderTemplateLayout()
+        )}
         <div className="space-y-2">
           <div className="h-1 bg-white rounded"></div>
           <div className="h-1 bg-white rounded w-4/5"></div>
