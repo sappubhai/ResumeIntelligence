@@ -154,6 +154,15 @@ export default function TemplateUpload() {
   const handleSaveTemplate = () => {
     if (!convertedTemplate) return;
 
+    if (!convertedTemplate.html || !convertedTemplate.css) {
+      toast({
+        title: "Invalid Template",
+        description: "Template conversion failed. HTML or CSS content is missing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const templateData: TemplateData = {
       name: templateName || convertedTemplate.name,
       description: templateDescription || convertedTemplate.description,
@@ -428,10 +437,10 @@ export default function TemplateUpload() {
                             <!DOCTYPE html>
                             <html>
                               <head>
-                                <style>${convertedTemplate.css}</style>
+                                <style>${convertedTemplate.css || ''}</style>
                               </head>
                               <body>
-                                ${convertedTemplate.html.replace(/\{\{(\w+)\}\}/g, (match, field) => {
+                                ${(convertedTemplate.html || '<p>Template content not available</p>').replace(/\{\{(\w+)\}\}/g, (match, field) => {
                                   const dummyData: Record<string, string> = {
                                     fullName: 'John Doe',
                                     professionalTitle: 'Software Engineer',
@@ -463,13 +472,13 @@ export default function TemplateUpload() {
                         <div>
                           <h4 className="font-medium text-gray-900 mb-2">HTML:</h4>
                           <div className="bg-gray-100 p-3 rounded max-h-40 overflow-auto">
-                            <pre className="text-sm text-gray-800 whitespace-pre-wrap">{convertedTemplate.html}</pre>
+                            <pre className="text-sm text-gray-800 whitespace-pre-wrap">{convertedTemplate.html || 'HTML content not available'}</pre>
                           </div>
                         </div>
                         <div>
                           <h4 className="font-medium text-gray-900 mb-2">CSS:</h4>
                           <div className="bg-gray-100 p-3 rounded max-h-40 overflow-auto">
-                            <pre className="text-sm text-gray-800 whitespace-pre-wrap">{convertedTemplate.css}</pre>
+                            <pre className="text-sm text-gray-800 whitespace-pre-wrap">{convertedTemplate.css || 'CSS content not available'}</pre>
                           </div>
                         </div>
                       </div>
