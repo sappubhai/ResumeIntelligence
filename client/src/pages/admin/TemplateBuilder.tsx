@@ -81,27 +81,17 @@ interface TemplateRow {
   id: string;
   columns: number;
   sections: { [columnIndex: number]: TemplateSection[] };
+  columnWidths: { [columnIndex: number]: number }; // percentage widths
 }
 
 interface PageLayout {
-  type: 'single' | 'left-sidebar' | 'right-sidebar' | 'grid' | 'custom';
+  type: 'single' | 'left-sidebar' | 'right-sidebar' | 'grid';
   sidebarSections: TemplateSection[];
   mainSections: TemplateSection[];
   gridRows: TemplateRow[];
-  customRows: CustomRow[];
 }
 
-interface CustomRow {
-  id: string;
-  type: 'header' | 'sidebar' | 'content';
-  columns: CustomColumn[];
-}
 
-interface CustomColumn {
-  id: string;
-  width: number; // percentage of row width
-  sections: TemplateSection[];
-}
 
 interface DraggableItemProps {
   section: TemplateSection;
@@ -285,8 +275,7 @@ export default function TemplateBuilder() {
         location: 'main'
       }
     ],
-    gridRows: [],
-    customRows: []
+    gridRows: []
   });
 
   const [globalStyles, setGlobalStyles] = useState({
@@ -363,11 +352,6 @@ export default function TemplateBuilder() {
         sections.push(...columnSections);
       });
     });
-    pageLayout.customRows.forEach(row => {
-        row.columns.forEach(column => {
-            sections.push(...column.sections);
-        });
-    });
     return sections;
   };
 
@@ -390,16 +374,6 @@ export default function TemplateBuilder() {
           draggedSection = newLayout.gridRows[rowIndex].sections[parseInt(colIndex)][dragIndex];
           newLayout.gridRows[rowIndex].sections[parseInt(colIndex)].splice(dragIndex, 1);
         }
-      } else if (fromLocation.startsWith('custom')) {
-        const [rowId, colId] = fromLocation.split('-');
-        const rowIndex = newLayout.customRows.findIndex(row => row.id === rowId);
-        if (rowIndex !== -1) {
-          const colIndex = newLayout.customRows[rowIndex].columns.findIndex(col => col.id === colId);
-          if (colIndex !== -1) {
-            draggedSection = newLayout.customRows[rowIndex].columns[colIndex].sections[dragIndex];
-            newLayout.customRows[rowIndex].columns[colIndex].sections.splice(dragIndex, 1);
-          }
-        }
       }
 
       if (!draggedSection) return newLayout;
@@ -420,16 +394,6 @@ export default function TemplateBuilder() {
           }
           newLayout.gridRows[rowIndex].sections[parseInt(colIndex)].splice(hoverIndex, 0, draggedSection);
           draggedSection.location = toLocation;
-        }
-      } else if (toLocation.startsWith('custom')) {
-        const [rowId, colId] = toLocation.split('-');
-        const rowIndex = newLayout.customRows.findIndex(row => row.id === rowId);
-        if (rowIndex !== -1) {
-          const colIndex = newLayout.customRows[rowIndex].columns.findIndex(col => col.id === colId);
-          if (colIndex !== -1) {
-            newLayout.customRows[rowIndex].columns[colIndex].sections.splice(hoverIndex, 0, draggedSection);
-            draggedSection.location = toLocation;
-          }
         }
       }
 
@@ -480,19 +444,6 @@ export default function TemplateBuilder() {
             newLayout.gridRows[rowIndex].sections[colIndex].push(newSection);
           }
         }
-      } else if (location.startsWith('custom-')) {
-        const parts = location.split('-');
-        if (parts.length >= 3) {
-          const rowId = parts[1];
-          const colId = parts[2];
-          const rowIndex = newLayout.customRows.findIndex(row => row.id === rowId);
-          if (rowIndex !== -1) {
-            const colIndex = newLayout.customRows[rowIndex].columns.findIndex(col => col.id === colId);
-            if (colIndex !== -1) {
-              newLayout.customRows[rowIndex].columns[colIndex].sections.push(newSection);
-            }
-          }
-        }
       }
       return newLayout;
     });
@@ -528,15 +479,6 @@ export default function TemplateBuilder() {
         )
       }));
 
-       // Update in custom rows
-       newLayout.customRows = newLayout.customRows.map(row => ({
-        ...row,
-        columns: row.columns.map(col => ({
-          ...col,
-          sections: col.sections.map(section => section.id === id ? { ...section, ...updates } : section)
-        }))
-      }));
-
       return newLayout;
     });
   };
@@ -556,14 +498,6 @@ export default function TemplateBuilder() {
             sections.filter(section => section.id !== id)
           ])
         )
-      }));
-
-      newLayout.customRows = newLayout.customRows.map(row => ({
-        ...row,
-        columns: row.columns.map(col => ({
-          ...col,
-          sections: col.sections.filter(section => section.id !== id)
-        }))
       }));
 
       return newLayout;
@@ -600,16 +534,6 @@ export default function TemplateBuilder() {
               newLayout.gridRows[rowIndex].sections[parseInt(colIndex)].push(newSection);
               newSection.location = sectionToDuplicate.location;
             }
-        } else if (sectionToDuplicate.location.startsWith('custom')) {
-          const [rowId, colId] = sectionToDuplicate.location.split('-');
-          const rowIndex = newLayout.customRows.findIndex(row => row.id === rowId);
-          if (rowIndex !== -1) {
-            const colIndex = newLayout.customRows[rowIndex].columns.findIndex(col => col.id === colId);
-            if (colIndex !== -1) {
-              newLayout.customRows[rowIndex].columns[colIndex].sections.push(newSection);
-              newSection.location = sectionToDuplicate.location;
-            }
-          }
         }
         return newLayout;
       });
@@ -617,13 +541,16 @@ export default function TemplateBuilder() {
   };
 
   const addRow = (columns: number) => {
+    const equalWidth = 100 / columns;
     const newRow: TemplateRow = {
       id: Date.now().toString(),
       columns,
-      sections: {}
+      sections: {},
+      columnWidths: {}
     };
     for (let i = 0; i < columns; i++) {
       newRow.sections[i] = [];
+      newRow.columnWidths[i] = equalWidth;
     }
 
     setPageLayout(prev => ({
@@ -654,108 +581,7 @@ export default function TemplateBuilder() {
     }));
   };
 
-  const addCustomRow = (type: 'header' | 'sidebar' | 'content') => {
-    const rowId = Date.now().toString();
-    let columns: CustomColumn[] = [];
-
-    if (type === 'header') {
-      columns = [{
-        id: `${rowId}-col-0`,
-        width: 100,
-        sections: []
-      }];
-    } else if (type === 'sidebar') {
-      columns = [
-        {
-          id: `${rowId}-col-0`,
-          width: 25,
-          sections: []
-        },
-        {
-          id: `${rowId}-col-1`,
-          width: 75,
-          sections: []
-        }
-      ];
-    } else {
-      columns = [
-        {
-          id: `${rowId}-col-0`,
-          width: 50,
-          sections: []
-        },
-        {
-          id: `${rowId}-col-1`,
-          width: 50,
-          sections: []
-        }
-      ];
-    }
-
-    const newRow: CustomRow = {
-      id: rowId,
-      type,
-      columns
-    };
-
-    setPageLayout(prev => ({
-      ...prev,
-      customRows: [...prev.customRows, newRow]
-    }));
-  };
-
-  const addSidebarHeaderRow = () => {
-    const newRow: TemplateRow = {
-      id: Date.now().toString(),
-      columns: 1,
-      sections: { 0: [] }
-    };
-
-    setPageLayout(prev => ({
-      ...prev,
-      gridRows: [newRow, ...prev.gridRows]
-    }));
-  };
-
-  const addSidebarContentRow = () => {
-    const newRow: TemplateRow = {
-      id: Date.now().toString(),
-      columns: 2,
-      sections: { 0: [], 1: [] }
-    };
-
-    setPageLayout(prev => ({
-      ...prev,
-      gridRows: [...prev.gridRows, newRow]
-    }));
-  };
-
-  const updateCustomColumnWidth = (rowId: string, columnId: string, newWidth: number) => {
-    setPageLayout(prev => ({
-      ...prev,
-      customRows: prev.customRows.map(row => {
-        if (row.id === rowId) {
-          const updatedColumns = row.columns.map(col => 
-            col.id === columnId ? { ...col, width: newWidth } : col
-          );
-          // Adjust other columns proportionally
-          const targetColumn = updatedColumns.find(col => col.id === columnId);
-          const otherColumns = updatedColumns.filter(col => col.id !== columnId);
-          const remainingWidth = 100 - newWidth;
-          const totalOtherWidth = otherColumns.reduce((sum, col) => sum + col.width, 0);
-
-          if (totalOtherWidth > 0) {
-            otherColumns.forEach(col => {
-              col.width = (col.width / totalOtherWidth) * remainingWidth;
-            });
-          }
-
-          return { ...row, columns: updatedColumns };
-        }
-        return row;
-      })
-    }));
-  };
+  
 
   const addCustomField = (sectionId: string) => {
     const fieldKey = `customField${Date.now()}`;
@@ -933,26 +759,7 @@ export default function TemplateBuilder() {
           `).join('')}
         </div>
       `;
-    } else if (pageLayout.type === 'custom') {
-      html = `
-        <div class="resume-template">
-          ${pageLayout.customRows.map(row => `
-            <div class="custom-row">
-              ${row.columns.map(col => `
-                <div class="custom-column" style="width: ${col.width}%;">
-                  ${col.sections.map(section => `
-                    <div class="template-section" style="${getSectionStyle(section)}">
-                      <h2 class="section-title">${section.title}</h2>
-                      ${generateSectionContent(section)}
-                    </div>
-                  `).join('')}
-                </div>
-              `).join('')}
-            </div>
-          `).join('')}
-        </div>
-      `;
-    }
+    
 
     return { html, css };
   };
@@ -1077,13 +884,6 @@ export default function TemplateBuilder() {
                           <RadioGroupItem value="grid" id="grid" />
                           <Label htmlFor="grid" className="flex items-center gap-2">
                             <Grid3X3 className="w-4 h-4" />
-                            Grid Layout
-                          </Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="custom" id="custom" />
-                          <Label htmlFor="custom" className="flex items-center gap-2">
-                            <Settings className="w-4 h-4" />
                             Custom Layout
                           </Label>
                         </div>
@@ -1092,87 +892,20 @@ export default function TemplateBuilder() {
 
                     {/* Layout Controls for All Types */}
                     <div className="space-y-3">
-                      <Label>Layout Controls</Label>
-                      
-                      {(pageLayout.type === 'single' || pageLayout.type === 'left-sidebar' || pageLayout.type === 'right-sidebar') && (
-                        <div className="space-y-2">
+                      <Label>Add Rows</Label>
+                      <div className="space-y-2">
+                        {[1, 2, 3, 4, 5].map(cols => (
                           <Button
+                            key={cols}
                             variant="outline"
                             size="sm"
                             className="w-full"
-                            onClick={() => addRow(1)}
+                            onClick={() => addRow(cols)}
                           >
-                            Add Header Row
+                            Add {cols} Column Row
                           </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => addRow(2)}
-                          >
-                            Add Two Column Row
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full"
-                            onClick={() => addRow(3)}
-                          >
-                            Add Three Column Row
-                          </Button>
-                        </div>
-                      )}
-
-                      {pageLayout.type === 'grid' && (
-                        <div className="space-y-2">
-                          <Label>Add Grid Rows</Label>
-                          <div className="space-y-2">
-                            {[1, 2, 3, 4, 5].map(cols => (
-                              <Button
-                                key={cols}
-                                variant="outline"
-                                size="sm"
-                                className="w-full"
-                                onClick={() => addRow(cols)}
-                              >
-                                Add {cols} Column Row
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {pageLayout.type === 'custom' && (
-                        <div className="space-y-2">
-                          <Label>Add Custom Rows</Label>
-                          <div className="space-y-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full"
-                              onClick={() => addCustomRow('header')}
-                            >
-                              Add Header Row (100%)
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full"
-                              onClick={() => addCustomRow('sidebar')}
-                            >
-                              Add Sidebar Row (25% + 75%)
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="w-full"
-                              onClick={() => addCustomRow('content')}
-                            >
-                              Add Content Row (50% + 50%)
-                            </Button>
-                          </div>
-                        </div>
-                      )}
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </TabsContent>
@@ -1328,6 +1061,66 @@ export default function TemplateBuilder() {
                 </div>
               </div>
 
+              {/* Layout Selection */}
+              <div className="bg-white rounded-lg shadow-sm border p-4 mb-6 mx-auto max-w-4xl">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Layout Selection</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Choose sidebar:</span>
+                    <div className="flex gap-2">
+                      <Button
+                        variant={pageLayout.type === 'left-sidebar' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setPageLayout(prev => ({ ...prev, type: 'left-sidebar' }))}
+                      >
+                        Left
+                      </Button>
+                      <Button
+                        variant={pageLayout.type === 'right-sidebar' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setPageLayout(prev => ({ ...prev, type: 'right-sidebar' }))}
+                      >
+                        Right
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-4">
+                  <Button
+                    variant={pageLayout.type === 'single' ? 'default' : 'outline'}
+                    className="flex flex-col items-center p-4 h-auto"
+                    onClick={() => setPageLayout(prev => ({ ...prev, type: 'single' }))}
+                  >
+                    <Layout className="w-6 h-6 mb-2" />
+                    <span>Single Column</span>
+                  </Button>
+                  <Button
+                    variant={pageLayout.type === 'left-sidebar' ? 'default' : 'outline'}
+                    className="flex flex-col items-center p-4 h-auto"
+                    onClick={() => setPageLayout(prev => ({ ...prev, type: 'left-sidebar' }))}
+                  >
+                    <Sidebar className="w-6 h-6 mb-2" />
+                    <span>With Sidebar</span>
+                  </Button>
+                  <Button
+                    variant={pageLayout.type === 'right-sidebar' ? 'default' : 'outline'}
+                    className="flex flex-col items-center p-4 h-auto"
+                    onClick={() => setPageLayout(prev => ({ ...prev, type: 'right-sidebar' }))}
+                  >
+                    <AlignRight className="w-6 h-6 mb-2" />
+                    <span>With Sidebar</span>
+                  </Button>
+                  <Button
+                    variant={pageLayout.type === 'grid' ? 'default' : 'outline'}
+                    className="flex flex-col items-center p-4 h-auto"
+                    onClick={() => setPageLayout(prev => ({ ...prev, type: 'grid' }))}
+                  >
+                    <Grid3X3 className="w-6 h-6 mb-2" />
+                    <span>Custom Layout</span>
+                  </Button>
+                </div>
+              </div>
+
               {/* Template Canvas */}
               <div className="bg-white rounded-lg shadow-sm border min-h-[800px] p-8 mx-auto max-w-4xl">
                 {pageLayout.type === 'single' && (
@@ -1469,52 +1262,16 @@ export default function TemplateBuilder() {
                 {pageLayout.type === 'grid' && (
                   <div className="space-y-4">
                     {pageLayout.gridRows.map((row) => (
-                      <div key={row.id} className={`grid gap-4 grid-cols-${row.columns}`}>
-                        {Array.from({ length: row.columns }, (_, colIndex) => (
-                          <DropZone
-                            key={colIndex}
-                            location={`grid-${row.id}-${colIndex}`}
-                            onDrop={handleSectionDrop}
-                            onNewSectionDrop={handleNewSectionDrop}
-                            className="border-2 border-dashed border-gray-200 rounded-lg p-4 min-h-[200px]"
-                            showAddButton
-                            onAddSection={() => handleAddSectionToLocation(`grid-${row.id}-${colIndex}`)}
-                          >
-                            <h4 className="text-xs text-gray-500 mb-2">Column {colIndex + 1}</h4>
-                            {(row.sections[colIndex] || []).map((section, sectionIndex) => (
-                              <DraggableItem
-                                key={section.id}
-                                section={section}
-                                index={sectionIndex}
-                                location={`grid-${row.id}-${colIndex}`}
-                                moveSection={moveSection}
-                                updateSection={updateSection}
-                                deleteSection={deleteSection}
-                                duplicateSection={duplicateSection}
-                                onSelectSection={setSelectedSection}
-                                isSelected={selectedSection === section.id}
-                              />
-                            ))}
-                          </DropZone>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {pageLayout.type === 'custom' && (
-                  <div className="space-y-4">
-                    {pageLayout.customRows.map((row) => (
                       <div key={row.id} className="border-2 border-dashed border-gray-200 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-4">
-                          <h4 className="text-sm font-medium capitalize">{row.type} Row</h4>
+                          <h4 className="text-sm font-medium">{row.columns} Column Row</h4>
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => {
                               setPageLayout(prev => ({
                                 ...prev,
-                                customRows: prev.customRows.filter(r => r.id !== row.id)
+                                gridRows: prev.gridRows.filter(r => r.id !== row.id)
                               }));
                             }}
                           >
@@ -1522,16 +1279,16 @@ export default function TemplateBuilder() {
                           </Button>
                         </div>
                         <div className="flex gap-4">
-                          {row.columns.map((column) => (
+                          {Array.from({ length: row.columns }, (_, colIndex) => (
                             <DropZone
-                              key={column.id}
-                              location={`custom-${row.id}-${column.id}`}
+                              key={colIndex}
+                              location={`grid-${row.id}-${colIndex}`}
                               onDrop={handleSectionDrop}
                               onNewSectionDrop={handleNewSectionDrop}
                               className="border border-gray-200 rounded p-3 min-h-[150px] flex-1"
-                              style={{ width: `${column.width}%` }}
+                              style={{ width: `${row.columnWidths[colIndex]}%` }}
                               showAddButton
-                              onAddSection={() => handleAddSectionToLocation(`custom-${row.id}-${column.id}`)}
+                              onAddSection={() => handleAddSectionToLocation(`grid-${row.id}-${colIndex}`)}
                             >
                               <div className="flex flex-col gap-2 mb-2">
                                 <div className="flex items-center gap-2">
@@ -1540,10 +1297,17 @@ export default function TemplateBuilder() {
                                     type="number"
                                     min="5"
                                     max="95"
-                                    value={Math.round(column.width)}
+                                    value={Math.round(row.columnWidths[colIndex])}
                                     onChange={(e) => {
                                       const newWidth = parseInt(e.target.value) || 10;
-                                      updateCustomColumnWidth(row.id, column.id, newWidth);
+                                      setPageLayout(prev => ({
+                                        ...prev,
+                                        gridRows: prev.gridRows.map(r => 
+                                          r.id === row.id 
+                                            ? { ...r, columnWidths: { ...r.columnWidths, [colIndex]: newWidth } }
+                                            : r
+                                        )
+                                      }));
                                     }}
                                     className="w-16 h-6 text-xs"
                                   />
@@ -1553,17 +1317,28 @@ export default function TemplateBuilder() {
                                   type="range"
                                   min="5"
                                   max="95"
-                                  value={column.width}
-                                  onChange={(e) => updateCustomColumnWidth(row.id, column.id, parseInt(e.target.value))}
+                                  value={row.columnWidths[colIndex]}
+                                  onChange={(e) => {
+                                    const newWidth = parseInt(e.target.value);
+                                    setPageLayout(prev => ({
+                                      ...prev,
+                                      gridRows: prev.gridRows.map(r => 
+                                        r.id === row.id 
+                                          ? { ...r, columnWidths: { ...r.columnWidths, [colIndex]: newWidth } }
+                                          : r
+                                      )
+                                    }));
+                                  }}
                                   className="w-full h-1"
                                 />
                               </div>
-                              {column.sections.map((section, sectionIndex) => (
+                              <h4 className="text-xs text-gray-500 mb-2">Column {colIndex + 1}</h4>
+                              {(row.sections[colIndex] || []).map((section, sectionIndex) => (
                                 <DraggableItem
                                   key={section.id}
                                   section={section}
                                   index={sectionIndex}
-                                  location={`custom-${row.id}-${column.id}`}
+                                  location={`grid-${row.id}-${colIndex}`}
                                   moveSection={moveSection}
                                   updateSection={updateSection}
                                   deleteSection={deleteSection}
@@ -1579,6 +1354,8 @@ export default function TemplateBuilder() {
                     ))}
                   </div>
                 )}
+
+                
               </div>
             </div>
           </div>
