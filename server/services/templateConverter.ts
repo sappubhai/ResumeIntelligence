@@ -201,21 +201,39 @@ Return only valid JSON:
 
 function processHTMLTemplate(htmlContent: string): { processedHtml: string, extractedCss: string } {
   try {
+    // Clean up the HTML content first
+    let cleanHtml = htmlContent.trim();
+    
     // Extract CSS from style tags
-    const styleMatches = htmlContent.match(/<style[^>]*>(.*?)<\/style>/gis);
+    const styleMatches = cleanHtml.match(/<style[^>]*>(.*?)<\/style>/gis);
     let extractedCss = '';
     
     if (styleMatches) {
       extractedCss = styleMatches.map(match => 
-        match.replace(/<\/?style[^>]*>/gi, '')
+        match.replace(/<\/?style[^>]*>/gi, '').trim()
       ).join('\n');
     }
 
     // Remove style tags from HTML
-    let processedHtml = htmlContent.replace(/<style[^>]*>.*?<\/style>/gis, '');
+    let processedHtml = cleanHtml.replace(/<style[^>]*>.*?<\/style>/gis, '');
     
-    // Remove head, html, body tags to get just the content
-    processedHtml = processedHtml.replace(/<\/?(!DOCTYPE|html|head|body)[^>]*>/gi, '');
+    // Remove DOCTYPE, html, head, and body tags to get just the content
+    processedHtml = processedHtml.replace(/<!DOCTYPE[^>]*>/gi, '');
+    processedHtml = processedHtml.replace(/<\/?html[^>]*>/gi, '');
+    processedHtml = processedHtml.replace(/<head[^>]*>.*?<\/head>/gis, '');
+    processedHtml = processedHtml.replace(/<\/?body[^>]*>/gi, '');
+    
+    // Clean up extra whitespace
+    processedHtml = processedHtml.trim();
+    
+    // If we don't have any content, use fallback
+    if (!processedHtml || processedHtml.length < 10) {
+      console.warn('HTML content too short or empty, using fallback');
+      return { 
+        processedHtml: generateFallbackHTML(), 
+        extractedCss: generateFallbackCSS() 
+      };
+    }
     
     // Replace common text patterns with template variables
     processedHtml = replaceTextWithVariables(processedHtml);
@@ -229,6 +247,24 @@ function processHTMLTemplate(htmlContent: string): { processedHtml: string, extr
     // Ensure we have basic CSS if none extracted
     if (!extractedCss.trim()) {
       extractedCss = generateFallbackCSS();
+    } else {
+      // Add profile image styles to extracted CSS if needed
+      if (!extractedCss.includes('.profile-image')) {
+        extractedCss += `
+.profile-image {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.profile-image img {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #ddd;
+}
+`;
+      }
     }
 
     return { processedHtml, extractedCss };
@@ -244,30 +280,32 @@ function processHTMLTemplate(htmlContent: string): { processedHtml: string, extr
 function replaceTextWithVariables(html: string): string {
   // Common patterns to replace with template variables
   const patterns = [
-    // Name patterns
-    { regex: /\b[A-Z][a-z]+ [A-Z][a-z]+\b/g, replacement: '{{fullName}}' },
-    
-    // Email patterns
+    // Email patterns (more specific)
     { regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, replacement: '{{email}}' },
     
-    // Phone patterns
+    // Phone patterns (more comprehensive)
     { regex: /\b(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, replacement: '{{mobileNumber}}' },
     
-    // Address patterns (basic)
-    { regex: /\b\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl)[^,\n]*/g, replacement: '{{address}}' },
-    
     // LinkedIn patterns
-    { regex: /(?:linkedin\.com\/in\/|linkedin\.com\/profile\/)[A-Za-z0-9-]+/g, replacement: '{{linkedinId}}' },
+    { regex: /(?:linkedin\.com\/in\/|linkedin\.com\/profile\/)[A-Za-z0-9-]+/gi, replacement: '{{linkedinId}}' },
     
     // Years and dates
-    { regex: /\b(19|20)\d{2}\s*[-–]\s*(19|20)\d{2}\b/g, replacement: '{{startDate}} - {{endDate}}' },
-    { regex: /\b(19|20)\d{2}\s*[-–]\s*Present\b/gi, replacement: '{{startDate}} - {{endDate}}' },
+    { regex: /\b(19|20)\d{2}\s*[-–—]\s*(19|20)\d{2}\b/g, replacement: '{{startDate}} - {{endDate}}' },
+    { regex: /\b(19|20)\d{2}\s*[-–—]\s*Present\b/gi, replacement: '{{startDate}} - {{endDate}}' },
+    { regex: /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(19|20)\d{2}\b/gi, replacement: '{{startDate}}' },
     
-    // Job titles (common ones)
-    { regex: /\b(Software Engineer|Developer|Manager|Director|Analyst|Consultant|Designer|Architect|Lead|Senior|Junior|Associate|Principal)\b/g, replacement: '{{professionalTitle}}' },
+    // Address patterns (more specific)
+    { regex: /\b\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl)[^,\n\r]*/gi, replacement: '{{address}}' },
     
-    // Company names (placeholder for demo)
-    { regex: /\b(Inc\.|LLC|Corp\.|Corporation|Company|Technologies|Solutions|Systems|Group|Ltd\.|Limited)\b/g, replacement: '{{company}}' },
+    // Replace content in common text blocks but preserve structure
+    { regex: /(\b[A-Z][a-z]+\s+){2,}(?=[A-Z]|$)/g, replacement: (match) => {
+      // If it looks like a name (2-3 words), replace with fullName
+      const words = match.trim().split(/\s+/);
+      if (words.length >= 2 && words.length <= 3) {
+        return '{{fullName}}';
+      }
+      return match;
+    }},
   ];
 
   let processedHtml = html;
@@ -284,8 +322,27 @@ function replaceTextWithVariables(html: string): string {
 
   // Apply replacements to non-heading content
   patterns.forEach(pattern => {
-    processedHtml = processedHtml.replace(pattern.regex, pattern.replacement);
+    if (typeof pattern.replacement === 'string') {
+      processedHtml = processedHtml.replace(pattern.regex, pattern.replacement);
+    } else {
+      processedHtml = processedHtml.replace(pattern.regex, pattern.replacement);
+    }
   });
+
+  // Add dummy data placeholders in common sections
+  if (!processedHtml.includes('{{summary}}')) {
+    // Look for paragraph content that might be a summary
+    processedHtml = processedHtml.replace(
+      /<p[^>]*>([^<]{100,})<\/p>/gi, 
+      '<p>{{summary}}</p>'
+    );
+  }
+
+  // Replace long text blocks with appropriate placeholders
+  processedHtml = processedHtml.replace(
+    /(\w+\s+){10,}/g, 
+    '{{description}}'
+  );
 
   // Restore headings
   headings.forEach((heading, index) => {
