@@ -205,7 +205,7 @@ const DraggableItem = ({ section, index, location, moveSection, updateSection, d
   );
 };
 
-const DropZone = ({ location, onDrop, children, className = "", showAddButton = false, onAddSection, onNewSectionDrop }: { 
+const DropZone = ({ location, onDrop, children, className = "", showAddButton = false, onAddSection, onNewSectionDrop, showAddRow = false, onAddRow }: { 
   location: string; 
   onDrop: (sectionId: string, location: string) => void; 
   children: React.ReactNode; 
@@ -213,6 +213,8 @@ const DropZone = ({ location, onDrop, children, className = "", showAddButton = 
   showAddButton?: boolean; 
   onAddSection?: () => void;
   onNewSectionDrop?: (sectionType: string, sectionTitle: string, location: string) => void;
+  showAddRow?: boolean;
+  onAddRow?: () => void;
 }) => {
   const [, drop] = useDrop({
     accept: ['section', 'new-section'],
@@ -229,9 +231,15 @@ const DropZone = ({ location, onDrop, children, className = "", showAddButton = 
     <div ref={drop} className={`min-h-[100px] ${className}`}>
       {children}
       {showAddButton && onAddSection && (
-        <Button variant="ghost" className="w-full border-dashed border-2" onClick={onAddSection}>
+        <Button variant="ghost" className="w-full border-dashed border-2 mb-2" onClick={onAddSection}>
           <Plus className="w-4 h-4 mr-2" />
           Add Section
+        </Button>
+      )}
+      {showAddRow && onAddRow && (
+        <Button variant="ghost" className="w-full border-dashed border-2 border-blue-300 text-blue-600" onClick={onAddRow}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Row
         </Button>
       )}
     </div>
@@ -247,6 +255,8 @@ export default function TemplateBuilder() {
   const [templateCategory, setTemplateCategory] = useState("professional");
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [showSectionModal, setShowSectionModal] = useState(false);
+  const [showRowModal, setShowRowModal] = useState(false);
+  const [newRowColumns, setNewRowColumns] = useState(2);
   const [targetLocation, setTargetLocation] = useState<'main' | 'sidebar' | string>('main'); // Allow string for grid/custom locations
   const [pageLayout, setPageLayout] = useState<PageLayout>({
     type: 'single',
@@ -1086,22 +1096,12 @@ export default function TemplateBuilder() {
                     </Button>
                     {(pageLayout.type === 'left-sidebar' || pageLayout.type === 'right-sidebar') && (
                       <div className="absolute bottom-1 right-1">
-                        <RadioGroup
-                          value={pageLayout.type}
-                          onValueChange={(value: any) => 
-                            setPageLayout(prev => ({ ...prev, type: value }))
+                        <Switch
+                          checked={pageLayout.type === 'right-sidebar'}
+                          onCheckedChange={(checked) => 
+                            setPageLayout(prev => ({ ...prev, type: checked ? 'right-sidebar' : 'left-sidebar' }))
                           }
-                          className="flex gap-1"
-                        >
-                          <div className="flex items-center space-x-1">
-                            <RadioGroupItem value="left-sidebar" id="left" className="h-3 w-3" />
-                            <Label htmlFor="left" className="text-xs">L</Label>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <RadioGroupItem value="right-sidebar" id="right" className="h-3 w-3" />
-                            <Label htmlFor="right" className="text-xs">R</Label>
-                          </div>
-                        </RadioGroup>
+                        />
                       </div>
                     )}
                   </div>
@@ -1256,6 +1256,16 @@ export default function TemplateBuilder() {
 
                 {pageLayout.type === 'grid' && (
                   <div className="space-y-4">
+                    {pageLayout.gridRows.length === 0 && (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                        <h3 className="text-lg font-medium text-gray-500 mb-4">Empty Canvas</h3>
+                        <p className="text-gray-400 mb-6">Start building your custom layout by adding rows</p>
+                        <Button onClick={() => setShowRowModal(true)} variant="outline">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Row
+                        </Button>
+                      </div>
+                    )}
                     {pageLayout.gridRows.map((row) => (
                       <div key={row.id} className="border-2 border-dashed border-gray-200 rounded-lg p-4">
                         <div className="flex justify-between items-center mb-4">
@@ -1284,6 +1294,8 @@ export default function TemplateBuilder() {
                               style={{ width: `${row.columnWidths[colIndex]}%` }}
                               showAddButton
                               onAddSection={() => handleAddSectionToLocation(`grid-${row.id}-${colIndex}`)}
+                              showAddRow
+                              onAddRow={() => setShowRowModal(true)}
                             >
                               <div className="flex flex-col gap-2 mb-2">
                                 <div className="flex items-center gap-2">
@@ -1297,11 +1309,34 @@ export default function TemplateBuilder() {
                                       const newWidth = parseInt(e.target.value) || 10;
                                       setPageLayout(prev => ({
                                         ...prev,
-                                        gridRows: prev.gridRows.map(r => 
-                                          r.id === row.id 
-                                            ? { ...r, columnWidths: { ...r.columnWidths, [colIndex]: newWidth } }
-                                            : r
-                                        )
+                                        gridRows: prev.gridRows.map(r => {
+                                          if (r.id === row.id) {
+                                            const newColumnWidths = { ...r.columnWidths };
+                                            const oldWidth = newColumnWidths[colIndex];
+                                            const widthDiff = newWidth - oldWidth;
+                                            newColumnWidths[colIndex] = newWidth;
+                                            
+                                            // Distribute the difference among other columns
+                                            const otherCols = Object.keys(newColumnWidths).filter(k => parseInt(k) !== colIndex);
+                                            const adjustmentPerCol = -widthDiff / otherCols.length;
+                                            
+                                            otherCols.forEach(col => {
+                                              newColumnWidths[parseInt(col)] = Math.max(5, newColumnWidths[parseInt(col)] + adjustmentPerCol);
+                                            });
+                                            
+                                            // Ensure total is 100%
+                                            const total = Object.values(newColumnWidths).reduce((sum, w) => sum + w, 0);
+                                            if (total !== 100) {
+                                              const adjustment = (100 - total) / otherCols.length;
+                                              otherCols.forEach(col => {
+                                                newColumnWidths[parseInt(col)] += adjustment;
+                                              });
+                                            }
+                                            
+                                            return { ...r, columnWidths: newColumnWidths };
+                                          }
+                                          return r;
+                                        })
                                       }));
                                     }}
                                     className="w-16 h-6 text-xs"
@@ -1317,11 +1352,34 @@ export default function TemplateBuilder() {
                                     const newWidth = parseInt(e.target.value);
                                     setPageLayout(prev => ({
                                       ...prev,
-                                      gridRows: prev.gridRows.map(r => 
-                                        r.id === row.id 
-                                          ? { ...r, columnWidths: { ...r.columnWidths, [colIndex]: newWidth } }
-                                          : r
-                                      )
+                                      gridRows: prev.gridRows.map(r => {
+                                        if (r.id === row.id) {
+                                          const newColumnWidths = { ...r.columnWidths };
+                                          const oldWidth = newColumnWidths[colIndex];
+                                          const widthDiff = newWidth - oldWidth;
+                                          newColumnWidths[colIndex] = newWidth;
+                                          
+                                          // Distribute the difference among other columns
+                                          const otherCols = Object.keys(newColumnWidths).filter(k => parseInt(k) !== colIndex);
+                                          const adjustmentPerCol = -widthDiff / otherCols.length;
+                                          
+                                          otherCols.forEach(col => {
+                                            newColumnWidths[parseInt(col)] = Math.max(5, newColumnWidths[parseInt(col)] + adjustmentPerCol);
+                                          });
+                                          
+                                          // Ensure total is 100%
+                                          const total = Object.values(newColumnWidths).reduce((sum, w) => sum + w, 0);
+                                          if (total !== 100) {
+                                            const adjustment = (100 - total) / otherCols.length;
+                                            otherCols.forEach(col => {
+                                              newColumnWidths[parseInt(col)] += adjustment;
+                                            });
+                                          }
+                                          
+                                          return { ...r, columnWidths: newColumnWidths };
+                                        }
+                                        return r;
+                                      })
                                     }));
                                   }}
                                   className="w-full h-1"
@@ -1381,6 +1439,45 @@ export default function TemplateBuilder() {
             <DialogClose asChild>
                 <Button type="button" variant="secondary">Close</Button>
               </DialogClose>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showRowModal} onOpenChange={setShowRowModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Row</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Number of Columns</Label>
+                <div className="grid grid-cols-5 gap-2 mt-2">
+                  {[1, 2, 3, 4, 5].map(cols => (
+                    <Button
+                      key={cols}
+                      variant={newRowColumns === cols ? "default" : "outline"}
+                      onClick={() => setNewRowColumns(cols)}
+                      className="aspect-square"
+                    >
+                      {cols}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => {
+                    addRow(newRowColumns);
+                    setShowRowModal(false);
+                  }}
+                  className="flex-1"
+                >
+                  Create Row
+                </Button>
+                <DialogClose asChild>
+                  <Button type="button" variant="secondary">Cancel</Button>
+                </DialogClose>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </div>
