@@ -754,9 +754,9 @@ export default function TemplateBuilder() {
       html = `
         <div class="resume-template">
           ${pageLayout.gridRows.map(row => `
-            <div class="grid-row grid-col-${row.columns}">
+            <div class="custom-row" style="display: flex; gap: 1rem; margin-bottom: 1rem;">
               ${Array.from({ length: row.columns }, (_, i) => `
-                <div class="grid-column">
+                <div class="custom-column" style="width: ${row.columnWidths[i]}%; padding: 0.5rem;">
                   ${(row.sections[i] || []).map(section => `
                     <div class="template-section" style="${getSectionStyle(section)}">
                       <h2 class="section-title">${section.title}</h2>
