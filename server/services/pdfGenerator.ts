@@ -22,7 +22,7 @@ Handlebars.registerHelper('if', function(condition: any, options: any) {
 Handlebars.registerHelper('each', function(context: any[], options: any) {
   let ret = '';
   if (context && context.length > 0) {
-    for (let i = 0; < context.length; i++) {
+    for (let i = 0; i < context.length; i++) {
       ret += options.fn(context[i]);
     }
   }
