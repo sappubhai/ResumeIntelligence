@@ -1065,27 +1065,8 @@ export default function TemplateBuilder() {
               <div className="bg-white rounded-lg shadow-sm border p-4 mb-6 mx-auto max-w-4xl">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold">Layout Selection</h3>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">Choose sidebar:</span>
-                    <div className="flex gap-2">
-                      <Button
-                        variant={pageLayout.type === 'left-sidebar' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setPageLayout(prev => ({ ...prev, type: 'left-sidebar' }))}
-                      >
-                        Left
-                      </Button>
-                      <Button
-                        variant={pageLayout.type === 'right-sidebar' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setPageLayout(prev => ({ ...prev, type: 'right-sidebar' }))}
-                      >
-                        Right
-                      </Button>
-                    </div>
-                  </div>
                 </div>
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <Button
                     variant={pageLayout.type === 'single' ? 'default' : 'outline'}
                     className="flex flex-col items-center p-4 h-auto"
@@ -1094,22 +1075,36 @@ export default function TemplateBuilder() {
                     <Layout className="w-6 h-6 mb-2" />
                     <span>Single Column</span>
                   </Button>
-                  <Button
-                    variant={pageLayout.type === 'left-sidebar' ? 'default' : 'outline'}
-                    className="flex flex-col items-center p-4 h-auto"
-                    onClick={() => setPageLayout(prev => ({ ...prev, type: 'left-sidebar' }))}
-                  >
-                    <Sidebar className="w-6 h-6 mb-2" />
-                    <span>With Sidebar</span>
-                  </Button>
-                  <Button
-                    variant={pageLayout.type === 'right-sidebar' ? 'default' : 'outline'}
-                    className="flex flex-col items-center p-4 h-auto"
-                    onClick={() => setPageLayout(prev => ({ ...prev, type: 'right-sidebar' }))}
-                  >
-                    <AlignRight className="w-6 h-6 mb-2" />
-                    <span>With Sidebar</span>
-                  </Button>
+                  <div className="relative">
+                    <Button
+                      variant={pageLayout.type === 'left-sidebar' || pageLayout.type === 'right-sidebar' ? 'default' : 'outline'}
+                      className="flex flex-col items-center p-4 h-auto w-full"
+                      onClick={() => setPageLayout(prev => ({ ...prev, type: pageLayout.type === 'left-sidebar' || pageLayout.type === 'right-sidebar' ? prev.type : 'left-sidebar' }))}
+                    >
+                      <Sidebar className="w-6 h-6 mb-2" />
+                      <span>With Sidebar</span>
+                    </Button>
+                    {(pageLayout.type === 'left-sidebar' || pageLayout.type === 'right-sidebar') && (
+                      <div className="absolute bottom-1 right-1">
+                        <RadioGroup
+                          value={pageLayout.type}
+                          onValueChange={(value: any) => 
+                            setPageLayout(prev => ({ ...prev, type: value }))
+                          }
+                          className="flex gap-1"
+                        >
+                          <div className="flex items-center space-x-1">
+                            <RadioGroupItem value="left-sidebar" id="left" className="h-3 w-3" />
+                            <Label htmlFor="left" className="text-xs">L</Label>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <RadioGroupItem value="right-sidebar" id="right" className="h-3 w-3" />
+                            <Label htmlFor="right" className="text-xs">R</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    )}
+                  </div>
                   <Button
                     variant={pageLayout.type === 'grid' ? 'default' : 'outline'}
                     className="flex flex-col items-center p-4 h-auto"
