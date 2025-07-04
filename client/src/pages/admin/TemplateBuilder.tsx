@@ -803,8 +803,7 @@ export default function TemplateBuilder() {
       .field-label { font-weight: 600; color: #555; }
       .field-value { color: #333; }
       .contact-info { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: ${globalStyles.headerStyle === 'centered' ? 'center' : 'flex-start'}; }
-      .```python
-contact-item { display: flex; align-items: center; gap: 0.25rem; }
+      .contact-item { display: flex; align-items: center; gap: 0.25rem; }
       .photo-circle { border-radius: 50%; }
       .photo-square { border-radius: 8px; }
     `;
