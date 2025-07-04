@@ -34,7 +34,7 @@ export async function convertTemplateFromFile(
       const result = await extractFromPDF(buffer);
       textContent = result.text;
       structuralInfo = result.structure;
-      
+
       // Step 2: Use AI to analyze and convert to HTML template
       const aiResult = await convertToHTMLTemplate(textContent, structuralInfo);
       html = aiResult.html;
@@ -46,7 +46,7 @@ export async function convertTemplateFromFile(
       const result = await extractFromWord(buffer);
       textContent = result.text;
       structuralInfo = result.structure;
-      
+
       // Step 2: Use AI to analyze and convert to HTML template
       const aiResult = await convertToHTMLTemplate(textContent, structuralInfo);
       html = aiResult.html;
@@ -160,7 +160,7 @@ Return only valid JSON:
 
     // Multiple attempts to parse the response
     let parsed = null;
-    
+
     // Try direct parsing
     try {
       parsed = JSON.parse(response);
@@ -197,17 +197,21 @@ Return only valid JSON:
   } catch (error) {
     console.error('Error in AI conversion:', error);
     return {
-
+      html: generateFallbackHTML(),
+      css: generateFallbackCSS()
+    };
+  }
+}
 
 function processHTMLTemplate(htmlContent: string): { processedHtml: string, extractedCss: string } {
   try {
     // Clean up the HTML content first
     let cleanHtml = htmlContent.trim();
-    
+
     // Extract CSS from style tags
     const styleMatches = cleanHtml.match(/<style[^>]*>(.*?)<\/style>/gis);
     let extractedCss = '';
-    
+
     if (styleMatches) {
       extractedCss = styleMatches.map(match => 
         match.replace(/<\/?style[^>]*>/gi, '').trim()
@@ -216,16 +220,16 @@ function processHTMLTemplate(htmlContent: string): { processedHtml: string, extr
 
     // Remove style tags from HTML
     let processedHtml = cleanHtml.replace(/<style[^>]*>.*?<\/style>/gis, '');
-    
+
     // Remove DOCTYPE, html, head, and body tags to get just the content
     processedHtml = processedHtml.replace(/<!DOCTYPE[^>]*>/gi, '');
     processedHtml = processedHtml.replace(/<\/?html[^>]*>/gi, '');
     processedHtml = processedHtml.replace(/<head[^>]*>.*?<\/head>/gis, '');
     processedHtml = processedHtml.replace(/<\/?body[^>]*>/gi, '');
-    
+
     // Clean up extra whitespace
     processedHtml = processedHtml.trim();
-    
+
     // If we don't have any content, use fallback
     if (!processedHtml || processedHtml.length < 10) {
       console.warn('HTML content too short or empty, using fallback');
@@ -234,10 +238,10 @@ function processHTMLTemplate(htmlContent: string): { processedHtml: string, extr
         extractedCss: generateFallbackCSS() 
       };
     }
-    
+
     // Replace common text patterns with template variables
     processedHtml = replaceTextWithVariables(processedHtml);
-    
+
     // Add profile image placeholder if not present
     if (!processedHtml.includes('{{profileImage}}') && !processedHtml.includes('<img')) {
       // Add profile image at the beginning
@@ -282,21 +286,21 @@ function replaceTextWithVariables(html: string): string {
   const patterns = [
     // Email patterns (more specific)
     { regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g, replacement: '{{email}}' },
-    
+
     // Phone patterns (more comprehensive)
     { regex: /\b(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b/g, replacement: '{{mobileNumber}}' },
-    
+
     // LinkedIn patterns
     { regex: /(?:linkedin\.com\/in\/|linkedin\.com\/profile\/)[A-Za-z0-9-]+/gi, replacement: '{{linkedinId}}' },
-    
+
     // Years and dates
     { regex: /\b(19|20)\d{2}\s*[-–—]\s*(19|20)\d{2}\b/g, replacement: '{{startDate}} - {{endDate}}' },
     { regex: /\b(19|20)\d{2}\s*[-–—]\s*Present\b/gi, replacement: '{{startDate}} - {{endDate}}' },
     { regex: /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+(19|20)\d{2}\b/gi, replacement: '{{startDate}}' },
-    
+
     // Address patterns (more specific)
     { regex: /\b\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Lane|Ln|Drive|Dr|Court|Ct|Place|Pl)[^,\n\r]*/gi, replacement: '{{address}}' },
-    
+
     // Replace content in common text blocks but preserve structure
     { regex: /(\b[A-Z][a-z]+\s+){2,}(?=[A-Z]|$)/g, replacement: (match) => {
       // If it looks like a name (2-3 words), replace with fullName
@@ -309,11 +313,11 @@ function replaceTextWithVariables(html: string): string {
   ];
 
   let processedHtml = html;
-  
+
   // Don't replace text inside headings (h1-h6 tags) to preserve section structure
   const headingRegex = /<(h[1-6])[^>]*>(.*?)<\/\1>/gi;
   const headings: string[] = [];
-  
+
   // Extract headings
   processedHtml = processedHtml.replace(headingRegex, (match) => {
     headings.push(match);
@@ -350,12 +354,6 @@ function replaceTextWithVariables(html: string): string {
   });
 
   return processedHtml;
-}
-
-      html: generateFallbackHTML(),
-      css: generateFallbackCSS()
-    };
-  }
 }
 
 function generateFallbackHTML(): string {

@@ -82,10 +82,23 @@ interface TemplateRow {
 }
 
 interface PageLayout {
-  type: 'single' | 'left-sidebar' | 'right-sidebar' | 'grid';
+  type: 'single' | 'left-sidebar' | 'right-sidebar' | 'grid' | 'custom';
   sidebarSections: TemplateSection[];
   mainSections: TemplateSection[];
   gridRows: TemplateRow[];
+  customRows: CustomRow[];
+}
+
+interface CustomRow {
+  id: string;
+  type: 'header' | 'sidebar' | 'content';
+  columns: CustomColumn[];
+}
+
+interface CustomColumn {
+  id: string;
+  width: number; // percentage of row width
+  sections: TemplateSection[];
 }
 
 interface DraggableItemProps {
@@ -228,7 +241,8 @@ export default function TemplateBuilder() {
         location: 'main'
       }
     ],
-    gridRows: []
+    gridRows: [],
+    customRows: []
   });
 
   const [globalStyles, setGlobalStyles] = useState({
@@ -475,6 +489,109 @@ export default function TemplateBuilder() {
     setPageLayout(prev => ({
       ...prev,
       mainSections: [...prev.mainSections, newSection]
+    }));
+  };
+
+  const addCustomRow = (type: 'header' | 'sidebar' | 'content') => {
+    const rowId = Date.now().toString();
+    let columns: CustomColumn[] = [];
+
+    if (type === 'header') {
+      columns = [{
+        id: `${rowId}-col-0`,
+        width: 100,
+        sections: []
+      }];
+    } else if (type === 'sidebar') {
+      columns = [
+        {
+          id: `${rowId}-col-0`,
+          width: 25,
+          sections: []
+        },
+        {
+          id: `${rowId}-col-1`,
+          width: 75,
+          sections: []
+        }
+      ];
+    } else {
+      columns = [
+        {
+          id: `${rowId}-col-0`,
+          width: 50,
+          sections: []
+        },
+        {
+          id: `${rowId}-col-1`,
+          width: 50,
+          sections: []
+        }
+      ];
+    }
+
+    const newRow: CustomRow = {
+      id: rowId,
+      type,
+      columns
+    };
+
+    setPageLayout(prev => ({
+      ...prev,
+      customRows: [...prev.customRows, newRow]
+    }));
+  };
+
+  const addSidebarHeaderRow = () => {
+    const newRow: TemplateRow = {
+      id: Date.now().toString(),
+      columns: 1,
+      sections: { 0: [] }
+    };
+    
+    setPageLayout(prev => ({
+      ...prev,
+      gridRows: [newRow, ...prev.gridRows]
+    }));
+  };
+
+  const addSidebarContentRow = () => {
+    const newRow: TemplateRow = {
+      id: Date.now().toString(),
+      columns: 2,
+      sections: { 0: [], 1: [] }
+    };
+    
+    setPageLayout(prev => ({
+      ...prev,
+      gridRows: [...prev.gridRows, newRow]
+    }));
+  };
+
+  const updateCustomColumnWidth = (rowId: string, columnId: string, newWidth: number) => {
+    setPageLayout(prev => ({
+      ...prev,
+      customRows: prev.customRows.map(row => {
+        if (row.id === rowId) {
+          const updatedColumns = row.columns.map(col => 
+            col.id === columnId ? { ...col, width: newWidth } : col
+          );
+          // Adjust other columns proportionally
+          const targetColumn = updatedColumns.find(col => col.id === columnId);
+          const otherColumns = updatedColumns.filter(col => col.id !== columnId);
+          const remainingWidth = 100 - newWidth;
+          const totalOtherWidth = otherColumns.reduce((sum, col) => sum + col.width, 0);
+          
+          if (totalOtherWidth > 0) {
+            otherColumns.forEach(col => {
+              col.width = (col.width / totalOtherWidth) * remainingWidth;
+            });
+          }
+          
+          return { ...row, columns: updatedColumns };
+        }
+        return row;
+      })
     }));
   };
 
@@ -863,6 +980,13 @@ export default function TemplateBuilder() {
                           Grid Layout
                         </Label>
                       </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="custom" id="custom" />
+                        <Label htmlFor="custom" className="flex items-center cursor-pointer">
+                          <Settings className="w-4 h-4 mr-2" />
+                          Custom Layout
+                        </Label>
+                      </div>
                     </RadioGroup>
                   </div>
 
@@ -880,6 +1004,64 @@ export default function TemplateBuilder() {
                             {cols} Col
                           </Button>
                         ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {pageLayout.type === 'custom' && (
+                    <div className="space-y-3">
+                      <Label>Add Custom Row</Label>
+                      <div className="space-y-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => addCustomRow('header')}
+                        >
+                          Header Row (Full Width)
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => addCustomRow('sidebar')}
+                        >
+                          Sidebar Row (25% | 75%)
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => addCustomRow('content')}
+                        >
+                          Content Row (Customizable)
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {(pageLayout.type === 'left-sidebar' || pageLayout.type === 'right-sidebar') && (
+                    <div className="space-y-3">
+                      <Label>Add Additional Rows</Label>
+                      <div className="space-y-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => addSidebarHeaderRow()}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Header Row (Full Width)
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={() => addSidebarContentRow()}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Additional Content Row
+                        </Button>
                       </div>
                     </div>
                   )}
@@ -1015,52 +1197,168 @@ export default function TemplateBuilder() {
                     )}
 
                     {(pageLayout.type === 'left-sidebar' || pageLayout.type === 'right-sidebar') && (
-                      <div className={`grid grid-cols-3 gap-4 ${pageLayout.type === 'right-sidebar' ? 'grid-flow-col-dense' : ''}`}>
-                        {/* Sidebar */}
-                        <div className={`${pageLayout.type === 'right-sidebar' ? 'col-start-3' : ''}`}>
-                          <div className="bg-gray-100 p-3 rounded-lg min-h-[200px]">
-                            <h4 className="font-medium mb-2">Sidebar</h4>
-                            <DropZone location="sidebar" onDrop={() => {}}>
-                              {pageLayout.sidebarSections.map((section, index) => (
-                                <DraggableItem
-                                  key={section.id}
-                                  section={section}
-                                  index={index}
-                                  location="sidebar"
-                                  moveSection={moveSection}
-                                  updateSection={updateSection}
-                                  deleteSection={deleteSection}
-                                  duplicateSection={duplicateSection}
-                                  onSelectSection={setSelectedSection}
-                                  isSelected={selectedSection === section.id}
-                                />
+                      <div className="space-y-4">
+                        {/* Additional Rows */}
+                        {pageLayout.gridRows.map((row, rowIndex) => (
+                          <div key={row.id} className="border border-gray-200 rounded-lg p-3">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium">
+                                {row.columns === 1 ? 'Header Row' : 'Content Row'} ({row.columns} columns)
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setPageLayout(prev => ({
+                                  ...prev,
+                                  gridRows: prev.gridRows.filter(r => r.id !== row.id)
+                                }))}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <div className={`grid grid-cols-${row.columns} gap-2`}>
+                              {Array.from({ length: row.columns }).map((_, colIndex) => (
+                                <div key={colIndex} className="bg-gray-100 p-2 rounded min-h-[100px]">
+                                  <div className="text-xs text-gray-500 mb-1">Column {colIndex + 1}</div>
+                                  <DropZone location={`${row.id}-${colIndex}`} onDrop={() => {}}>
+                                    {(row.sections[colIndex] || []).map((section, sectionIndex) => (
+                                      <DraggableItem
+                                        key={section.id}
+                                        section={section}
+                                        index={sectionIndex}
+                                        location={`${row.id}-${colIndex}`}
+                                        moveSection={moveSection}
+                                        updateSection={updateSection}
+                                        deleteSection={deleteSection}
+                                        duplicateSection={duplicateSection}
+                                        onSelectSection={setSelectedSection}
+                                        isSelected={selectedSection === section.id}
+                                      />
+                                    ))}
+                                  </DropZone>
+                                </div>
                               ))}
-                            </DropZone>
+                            </div>
                           </div>
-                        </div>
+                        ))}
 
-                        {/* Main Content */}
-                        <div className="col-span-2">
-                          <div className="bg-white p-3 rounded-lg min-h-[200px]">
-                            <h4 className="font-medium mb-2">Main Content</h4>
-                            <DropZone location="main" onDrop={() => {}}>
-                              {pageLayout.mainSections.map((section, index) => (
-                                <DraggableItem
-                                  key={section.id}
-                                  section={section}
-                                  index={index}
-                                  location="main"
-                                  moveSection={moveSection}
-                                  updateSection={updateSection}
-                                  deleteSection={deleteSection}
-                                  duplicateSection={duplicateSection}
-                                  onSelectSection={setSelectedSection}
-                                  isSelected={selectedSection === section.id}
-                                />
-                              ))}
-                            </DropZone>
+                        {/* Main Sidebar Layout */}
+                        <div className={`grid grid-cols-3 gap-4 ${pageLayout.type === 'right-sidebar' ? 'grid-flow-col-dense' : ''}`}>
+                          {/* Sidebar */}
+                          <div className={`${pageLayout.type === 'right-sidebar' ? 'col-start-3' : ''}`}>
+                            <div className="bg-gray-100 p-3 rounded-lg min-h-[200px]">
+                              <h4 className="font-medium mb-2">Sidebar</h4>
+                              <DropZone location="sidebar" onDrop={() => {}}>
+                                {pageLayout.sidebarSections.map((section, index) => (
+                                  <DraggableItem
+                                    key={section.id}
+                                    section={section}
+                                    index={index}
+                                    location="sidebar"
+                                    moveSection={moveSection}
+                                    updateSection={updateSection}
+                                    deleteSection={deleteSection}
+                                    duplicateSection={duplicateSection}
+                                    onSelectSection={setSelectedSection}
+                                    isSelected={selectedSection === section.id}
+                                  />
+                                ))}
+                              </DropZone>
+                            </div>
+                          </div>
+
+                          {/* Main Content */}
+                          <div className="col-span-2">
+                            <div className="bg-white p-3 rounded-lg min-h-[200px]">
+                              <h4 className="font-medium mb-2">Main Content</h4>
+                              <DropZone location="main" onDrop={() => {}}>
+                                {pageLayout.mainSections.map((section, index) => (
+                                  <DraggableItem
+                                    key={section.id}
+                                    section={section}
+                                    index={index}
+                                    location="main"
+                                    moveSection={moveSection}
+                                    updateSection={updateSection}
+                                    deleteSection={deleteSection}
+                                    duplicateSection={duplicateSection}
+                                    onSelectSection={setSelectedSection}
+                                    isSelected={selectedSection === section.id}
+                                  />
+                                ))}
+                              </DropZone>
+                            </div>
                           </div>
                         </div>
+                      </div>
+                    )}
+
+                    {pageLayout.type === 'custom' && (
+                      <div className="space-y-4">
+                        {pageLayout.customRows.map((row, rowIndex) => (
+                          <div key={row.id} className="border border-gray-200 rounded-lg p-3">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium">
+                                Custom Row {rowIndex + 1} ({row.type})
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setPageLayout(prev => ({
+                                  ...prev,
+                                  customRows: prev.customRows.filter(r => r.id !== row.id)
+                                }))}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <div className="flex gap-2">
+                              {row.columns.map((column, colIndex) => (
+                                <div 
+                                  key={column.id} 
+                                  className="bg-gray-100 p-2 rounded min-h-[100px]"
+                                  style={{ width: `${column.width}%` }}
+                                >
+                                  <div className="flex justify-between items-center mb-2">
+                                    <div className="text-xs text-gray-500">Column {colIndex + 1}</div>
+                                    <div className="flex items-center gap-1">
+                                      <Input
+                                        type="number"
+                                        value={Math.round(column.width)}
+                                        onChange={(e) => updateCustomColumnWidth(row.id, column.id, parseInt(e.target.value) || 0)}
+                                        className="w-16 h-6 text-xs"
+                                        min="5"
+                                        max="95"
+                                      />
+                                      <span className="text-xs">%</span>
+                                    </div>
+                                  </div>
+                                  <DropZone location={`${row.id}-${column.id}`} onDrop={() => {}}>
+                                    {column.sections.map((section, sectionIndex) => (
+                                      <DraggableItem
+                                        key={section.id}
+                                        section={section}
+                                        index={sectionIndex}
+                                        location={`${row.id}-${column.id}`}
+                                        moveSection={moveSection}
+                                        updateSection={updateSection}
+                                        deleteSection={deleteSection}
+                                        duplicateSection={duplicateSection}
+                                        onSelectSection={setSelectedSection}
+                                        isSelected={selectedSection === section.id}
+                                      />
+                                    ))}
+                                  </DropZone>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                        {pageLayout.customRows.length === 0 && (
+                          <div className="text-center py-8 text-gray-500">
+                            Add custom rows to build your layout
+                          </div>
+                        )}
                       </div>
                     )}
 
