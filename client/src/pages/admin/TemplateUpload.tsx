@@ -215,6 +215,23 @@ export default function TemplateUpload() {
     );
   }
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Add null checks for file operations
+  const getFileName = (file: File | null) => {
+    return file?.name || '';
+  };
+
+  const getFileSize = (file: File | null) => {
+    return file?.size || 0;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
@@ -305,10 +322,8 @@ export default function TemplateUpload() {
                           </div>
                         </div>
                         <div>
-                          <p className="text-lg font-medium text-gray-900">{file.name}</p>
-                          <p className="text-sm text-gray-500">
-                            {(file.size / 1024 / 1024).toFixed(2)} MB
-                          </p>
+                          <p className="font-medium text-gray-900">{getFileName(file)}</p>
+                          <p className="text-sm text-gray-500">{formatFileSize(getFileSize(file))}</p>
                           <Button
                             variant="ghost"
                             size="sm"

@@ -901,7 +901,7 @@ export default function TemplateBuilder() {
 
   const generateSectionContent = (section: TemplateSection) => {
     const enabledFields = Object.entries(section.fields).filter(([_, field]) => field.enabled);
-    
+
     if (section.type === 'header') {
       return `
         <div class="contact-info">
@@ -914,7 +914,7 @@ export default function TemplateBuilder() {
         </div>
       `;
     }
-    
+
     return `
       <div class="section-content">
         ${enabledFields.map(([key, field]) => `
@@ -926,3 +926,556 @@ export default function TemplateBuilder() {
       </div>
     `;
   };
+
+  if (authLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!user || user.role !== 'admin') {
+    return <div>Access denied</div>;
+  }
+
+  return (
+    <DndProvider backend={HTML5Backend}>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+        <div className="flex h-screen">
+          {/* Left Sidebar - Tools */}
+          <div className="w-80 bg-white border-r border-gray-200 overflow-y-auto">
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-6">
+                <Button variant="ghost" onClick={() => setLocation("/admin/templates")}>
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+                <h1 className="text-xl font-bold">Template Builder</h1>
+              </div>
+
+              <Tabs defaultValue="sections" className="w-full">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="sections">Sections</TabsTrigger>
+                  <TabsTrigger value="layout">Layout</TabsTrigger>
+                  <TabsTrigger value="style">Style</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="sections" className="space-y-4">
+                  <div className="space-y-3">
+                    <h3 className="font-medium text-sm text-gray-700">Available Sections</h3>
+                    {availableSections.map((section) => (
+                      <div
+                        key={section.type}
+                        className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 cursor-pointer transition-colors"
+                        onClick={() => addSection(section.type, section.title)}
+                      >
+                        <div className="flex items-center gap-2">
+                          <section.icon className="w-4 h-4" />
+                          <span className="text-sm font-medium">{section.title}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="layout" className="space-y-4">
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-sm font-medium">Page Layout</Label>
+                      <RadioGroup
+                        value={pageLayout.type}
+                        onValueChange={(value: any) => 
+                          setPageLayout(prev => ({ ...prev, type: value })
+                        }
+                        className="mt-2"
+                      >
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="single" id="single" />
+                          <Label htmlFor="single" className="flex items-center gap-2">
+                            <Layout className="w-4 h-4" />
+                            Single Column
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="left-sidebar" id="left-sidebar" />
+                          <Label htmlFor="left-sidebar" className="flex items-center gap-2">
+                            <Sidebar className="w-4 h-4" />
+                            Left Sidebar
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="right-sidebar" id="right-sidebar" />
+                          <Label htmlFor="right-sidebar" className="flex items-center gap-2">
+                            <AlignRight className="w-4 h-4" />
+                            Right Sidebar
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="grid" id="grid" />
+                          <Label htmlFor="grid" className="flex items-center gap-2">
+                            <Grid3X3 className="w-4 h-4" />
+                            Grid Layout
+                          </Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="custom" id="custom" />
+                          <Label htmlFor="custom" className="flex items-center gap-2">
+                            <Settings className="w-4 h-4" />
+                            Custom Layout
+                          </Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    {pageLayout.type === 'grid' && (
+                      <div className="space-y-2">
+                        <Label>Add Grid Rows</Label>
+                        <div className="space-y-2">
+                          {[1, 2, 3, 4, 5].map(cols => (
+                            <Button
+                              key={cols}
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => addRow(cols)}
+                            >
+                              Add {cols} Column Row
+                            </Button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {pageLayout.type === 'custom' && (
+                      <div className="space-y-2">
+                        <Label>Add Custom Rows</Label>
+                        <div className="space-y-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => addCustomRow('header')}
+                          >
+                            Add Header Row
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => addCustomRow('sidebar')}
+                          >
+                            Add Sidebar Row
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() => addCustomRow('content')}
+                          >
+                            Add Content Row
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="style" className="space-y-4">
+                  {currentSection ? (
+                    <div className="space-y-4">
+                      <h3 className="font-medium">
+                        Editing: {currentSection.title}
+                      </h3>
+
+                      <div className="space-y-3">
+                        <div>
+                          <Label>Background Color</Label>
+                          <Input
+                            type="color"
+                            value={currentSection.style.backgroundColor || '#ffffff'}
+                            onChange={(e) => updateSection(currentSection.id, {
+                              style: { ...currentSection.style, backgroundColor: e.target.value }
+                            })}
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Padding</Label>
+                          <Slider
+                            value={[currentSection.style.padding || 16]}
+                            onValueChange={([value]) => updateSection(currentSection.id, {
+                              style: { ...currentSection.style, padding: value }
+                            })}
+                            max={50}
+                            step={2}
+                            className="mt-2"
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Border Radius</Label>
+                          <Slider
+                            value={[currentSection.style.borderRadius || 8]}
+                            onValueChange={([value]) => updateSection(currentSection.id, {
+                              style: { ...currentSection.style, borderRadius: value }
+                            })}
+                            max={20}
+                            step={1}
+                            className="mt-2"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-sm">Section Fields</h4>
+                        {Object.entries(currentSection.fields).map(([key, field]) => (
+                          <div key={key} className="flex items-center justify-between p-2 border rounded">
+                            <span className="text-sm">{field.label}</span>
+                            <Switch
+                              checked={field.enabled}
+                              onCheckedChange={(checked) => {
+                                updateSection(currentSection.id, {
+                                  fields: {
+                                    ...currentSection.fields,
+                                    [key]: { ...field, enabled: checked }
+                                  }
+                                });
+                              }}
+                            />
+                          </div>
+                        ))}
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => addCustomField(currentSection.id)}
+                          className="w-full"
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Custom Field
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-gray-500 py-8">
+                      Select a section to edit its style
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+
+          {/* Main Canvas */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-6">
+              <div className="flex justify-between items-center mb-6">
+                <div className="space-y-1">
+                  <Input
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    className="text-xl font-bold border-none p-0 focus:ring-0"
+                    placeholder="Template Name"
+                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={templateCategory}
+                      onChange={(e) => setTemplateCategory(e.target.value)}
+                      className="text-sm border rounded px-2 py-1"
+                    >
+                      <option value="professional">Professional</option>
+                      <option value="creative">Creative</option>
+                      <option value="modern">Modern</option>
+                      <option value="classic">Classic</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button variant="outline">
+                    <Eye className="w-4 h-4 mr-2" />
+                    Preview
+                  </Button>
+                  <Button 
+                    onClick={() => saveMutation.mutate()}
+                    disabled={saveMutation.isPending}
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    {saveMutation.isPending ? 'Saving...' : 'Save Template'}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Template Canvas */}
+              <div className="bg-white rounded-lg shadow-sm border min-h-[800px] p-8 mx-auto max-w-4xl">
+                {pageLayout.type === 'single' && (
+                  <DropZone location="main" onDrop={handleSectionDrop} className="space-y-4">
+                    {pageLayout.mainSections.map((section, index) => (
+                      <DraggableItem
+                        key={section.id}
+                        section={section}
+                        index={index}
+                        location="main"
+                        moveSection={moveSection}
+                        updateSection={updateSection}
+                        deleteSection={deleteSection}
+                        duplicateSection={duplicateSection}
+                        onSelectSection={setSelectedSection}
+                        isSelected={selectedSection === section.id}
+                      />
+                    ))}
+                    <Button
+                      variant="ghost"
+                      className="w-full border-dashed border-2 py-8"
+                      onClick={() => setShowSectionModal(true)}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Section
+                    </Button>
+                  </DropZone>
+                )}
+
+                {(pageLayout.type === 'left-sidebar' || pageLayout.type === 'right-sidebar') && (
+                  <div className={`grid gap-6 ${pageLayout.type === 'left-sidebar' ? 'grid-cols-[300px_1fr]' : 'grid-cols-[1fr_300px]'}`}>
+                    {pageLayout.type === 'left-sidebar' && (
+                      <>
+                        <DropZone location="sidebar" onDrop={handleSectionDrop} className="space-y-4">
+                          <h3 className="font-medium text-sm text-gray-600 mb-4">Sidebar</h3>
+                          {pageLayout.sidebarSections.map((section, index) => (
+                            <DraggableItem
+                              key={section.id}
+                              section={section}
+                              index={index}
+                              location="sidebar"
+                              moveSection={moveSection}
+                              updateSection={updateSection}
+                              deleteSection={deleteSection}
+                              duplicateSection={duplicateSection}
+                              onSelectSection={setSelectedSection}
+                              isSelected={selectedSection === section.id}
+                            />
+                          ))}
+                          <Button
+                            variant="ghost"
+                            className="w-full border-dashed border-2"
+                            onClick={() => {
+                              setTargetLocation('sidebar');
+                              setShowSectionModal(true);
+                            }}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Section
+                          </Button>
+                        </DropZone>
+                        <DropZone location="main" onDrop={handleSectionDrop} className="space-y-4">
+                          <h3 className="font-medium text-sm text-gray-600 mb-4">Main Content</h3>
+                          {pageLayout.mainSections.map((section, index) => (
+                            <DraggableItem
+                              key={section.id}
+                              section={section}
+                              index={index}
+                              location="main"
+                              moveSection={moveSection}
+                              updateSection={updateSection}
+                              deleteSection={deleteSection}
+                              duplicateSection={duplicateSection}
+                              onSelectSection={setSelectedSection}
+                              isSelected={selectedSection === section.id}
+                            />
+                          ))}
+                          <Button
+                            variant="ghost"
+                            className="w-full border-dashed border-2"
+                            onClick={() => {
+                              setTargetLocation('main');
+                              setShowSectionModal(true);
+                            }}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Section
+                          </Button>
+                        </DropZone>
+                      </>
+                    )}
+
+                    {pageLayout.type === 'right-sidebar' && (
+                      <>
+                        <DropZone location="main" onDrop={handleSectionDrop} className="space-y-4">
+                          <h3 className="font-medium text-sm text-gray-600 mb-4">Main Content</h3>
+                          {pageLayout.mainSections.map((section, index) => (
+                            <DraggableItem
+                              key={section.id}
+                              section={section}
+                              index={index}
+                              location="main"
+                              moveSection={moveSection}
+                              updateSection={updateSection}
+                              deleteSection={deleteSection}
+                              duplicateSection={duplicateSection}
+                              onSelectSection={setSelectedSection}
+                              isSelected={selectedSection === section.id}
+                            />
+                          ))}
+                          <Button
+                            variant="ghost"
+                            className="w-full border-dashed border-2"
+                            onClick={() => {
+                              setTargetLocation('main');
+                              setShowSectionModal(true);
+                            }}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Section
+                          </Button>
+                        </DropZone>
+                        <DropZone location="sidebar" onDrop={handleSectionDrop} className="space-y-4">
+                          <h3 className="font-medium text-sm text-gray-600 mb-4">Sidebar</h3>
+                          {pageLayout.sidebarSections.map((section, index) => (
+                            <DraggableItem
+                              key={section.id}
+                              section={section}
+                              index={index}
+                              location="sidebar"
+                              moveSection={moveSection}
+                              updateSection={updateSection}
+                              deleteSection={deleteSection}
+                              duplicateSection={duplicateSection}
+                              onSelectSection={setSelectedSection}
+                              isSelected={selectedSection === section.id}
+                            />
+                          ))}
+                          <Button
+                            variant="ghost"
+                            className="w-full border-dashed border-2"
+                            onClick={() => {
+                              setTargetLocation('sidebar');
+                              setShowSectionModal(true);
+                            }}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add Section
+                          </Button>
+                        </DropZone>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {pageLayout.type === 'grid' && (
+                  <div className="space-y-4">
+                    {pageLayout.gridRows.map((row) => (
+                      <div key={row.id} className={`grid gap-4 grid-cols-${row.columns}`}>
+                        {Array.from({ length: row.columns }, (_, colIndex) => (
+                          <DropZone
+                            key={colIndex}
+                            location={`grid-${row.id}-${colIndex}`}
+                            onDrop={handleSectionDrop}
+                            className="border-2 border-dashed border-gray-200 rounded-lg p-4 min-h-[200px]"
+                          >
+                            <h4 className="text-xs text-gray-500 mb-2">Column {colIndex + 1}</h4>
+                            {(row.sections[colIndex] || []).map((section, sectionIndex) => (
+                              <DraggableItem
+                                key={section.id}
+                                section={section}
+                                index={sectionIndex}
+                                location={`grid-${row.id}-${colIndex}`}
+                                moveSection={moveSection}
+                                updateSection={updateSection}
+                                deleteSection={deleteSection}
+                                duplicateSection={duplicateSection}
+                                onSelectSection={setSelectedSection}
+                                isSelected={selectedSection === section.id}
+                              />
+                            ))}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="w-full border-dashed border-2 mt-2"
+                              onClick={() => handleAddSectionToLocation(`grid-${row.id}-${colIndex}`)}
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Add Section
+                            </Button>
+                          </DropZone>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {pageLayout.type === 'custom' && (
+                  <div className="space-y-4">
+                    {pageLayout.customRows.map((row) => (
+                      <div key={row.id} className="border-2 border-dashed border-gray-200 rounded-lg p-4">
+                        <div className="flex justify-between items-center mb-4">
+                          <h4 className="text-sm font-medium capitalize">{row.type} Row</h4>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setPageLayout(prev => ({
+                                ...prev,
+                                customRows: prev.customRows.filter(r => r.id !== row.id)
+                              }));
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <div className="flex gap-4">
+                          {row.columns.map((column) => (
+                            <DropZone
+                              key={column.id}
+                              location={`custom-${row.id}-${column.id}`}
+                              onDrop={handleSectionDrop}
+                              className="border border-gray-200 rounded p-3 min-h-[150px] flex-1"
+                              style={{ width: `${column.width}%` }}
+                            >
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="text-xs text-gray-500">
+                                  {Math.round(column.width)}%
+                                </span>
+                                <input
+                                  type="range"
+                                  min="10"
+                                  max="90"
+                                  value={column.width}
+                                  onChange={(e) => updateCustomColumnWidth(row.id, column.id, parseInt(e.target.value))}
+                                  className="w-16 h-1"
+                                />
+                              </div>
+                              {column.sections.map((section, sectionIndex) => (
+                                <DraggableItem
+                                  key={section.id}
+                                  section={section}
+                                  index={sectionIndex}
+                                  location={`custom-${row.id}-${column.id}`}
+                                  moveSection={moveSection}
+                                  updateSection={updateSection}
+                                  deleteSection={deleteSection}
+                                  duplicateSection={duplicateSection}
+                                  onSelectSection={setSelectedSection}
+                                  isSelected={selectedSection === section.id}
+                                />
+                              ))}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full border-dashed border-2 mt-2"
+                                onClick={() => handleAddSectionToLocation(`custom-${row.id}-${column.id}`)}
+                              >
+                                <Plus className="w-4 h-4 mr-2" />
+                                Add Section
+                              </Button>
+                            </DropZone>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </DndProvider>
+  );
+}
