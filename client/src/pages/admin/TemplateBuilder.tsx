@@ -982,7 +982,7 @@ export default function TemplateBuilder() {
                       <RadioGroup
                         value={pageLayout.type}
                         onValueChange={(value: any) => 
-                          setPageLayout(prev => ({ ...prev, type: value })
+                          setPageLayout(prev => ({ ...prev, type: value }))
                         }
                         className="mt-2"
                       >
