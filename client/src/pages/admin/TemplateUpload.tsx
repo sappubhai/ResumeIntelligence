@@ -43,7 +43,12 @@ export default function TemplateUpload() {
   const [file, setFile] = useState<File | null>(null);
   const [converting, setConverting] = useState(false);
   const [conversionProgress, setConversionProgress] = useState(0);
-  const [convertedTemplate, setConvertedTemplate] = useState<TemplateData | null>(null);
+  const [convertedTemplate, setConvertedTemplate] = useState<{
+    name: string;
+    description: string;
+    html: string;
+    css: string;
+  } | null>(null);
   const [templateName, setTemplateName] = useState("");
   const [templateDescription, setTemplateDescription] = useState("");
   const [templateCategory, setTemplateCategory] = useState("professional");

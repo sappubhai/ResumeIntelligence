@@ -1,4 +1,3 @@
-
 import { useState, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -53,6 +52,7 @@ import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
+import { X } from "lucide-react";
 
 interface TemplateSection {
   id: string;
@@ -115,7 +115,7 @@ interface DraggableItemProps {
 
 const DraggableItem = ({ section, index, location, moveSection, updateSection, deleteSection, duplicateSection, onSelectSection, isSelected }: DraggableItemProps) => {
   const ref = useRef<HTMLDivElement>(null);
-  
+
   const [, drag] = useDrag({
     type: 'section',
     item: { index, location, sectionId: section.id },
@@ -191,7 +191,7 @@ const DraggableItem = ({ section, index, location, moveSection, updateSection, d
   );
 };
 
-const DropZone = ({ location, onDrop, children, className = "" }: { location: string; onDrop: (sectionId: string, location: string) => void; children: React.ReactNode; className?: string }) => {
+const DropZone = ({ location, onDrop, children, className = "", showAddButton = false, onAddSection }: { location: string; onDrop: (sectionId: string, location: string) => void; children: React.ReactNode; className?: string, showAddButton?: boolean, onAddSection?: () => void }) => {
   const [, drop] = useDrop({
     accept: 'section',
     drop: (item: { sectionId: string }) => {
@@ -202,6 +202,12 @@ const DropZone = ({ location, onDrop, children, className = "" }: { location: st
   return (
     <div ref={drop} className={`min-h-[100px] ${className}`}>
       {children}
+      {showAddButton && onAddSection && (
+        <Button variant="ghost" className="w-full border-dashed border-2" onClick={onAddSection}>
+          <Plus className="w-4 h-4 mr-2" />
+          Add Section
+        </Button>
+      )}
     </div>
   );
 };
@@ -210,7 +216,7 @@ export default function TemplateBuilder() {
   const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const [, setLocation] = useLocation();
-  
+
   const [templateName, setTemplateName] = useState("Custom Template");
   const [templateCategory, setTemplateCategory] = useState("professional");
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
@@ -319,37 +325,83 @@ export default function TemplateBuilder() {
         sections.push(...columnSections);
       });
     });
+    pageLayout.customRows.forEach(row => {
+        row.columns.forEach(column => {
+            sections.push(...column.sections);
+        });
+    });
     return sections;
   };
 
   const moveSection = (dragIndex: number, hoverIndex: number, fromLocation: string, toLocation: string) => {
-    const allSections = getAllSections();
-    const draggedSection = allSections.find(s => s.location === fromLocation);
-    if (!draggedSection) return;
-
-    // Update section location
-    draggedSection.location = toLocation;
-    
-    // Update page layout
     setPageLayout(prev => {
       const newLayout = { ...prev };
-      
-      // Remove from old location
+      let draggedSection: TemplateSection | undefined;
+
+      // 1. Remove from old location
       if (fromLocation === 'sidebar') {
-        newLayout.sidebarSections = newLayout.sidebarSections.filter(s => s.id !== draggedSection.id);
+        draggedSection = newLayout.sidebarSections[dragIndex];
+        newLayout.sidebarSections.splice(dragIndex, 1);
       } else if (fromLocation === 'main') {
-        newLayout.mainSections = newLayout.mainSections.filter(s => s.id !== draggedSection.id);
+        draggedSection = newLayout.mainSections[dragIndex];
+        newLayout.mainSections.splice(dragIndex, 1);
+      } else if (fromLocation.startsWith('grid')) {
+        const [rowId, colIndex] = fromLocation.split('-');
+        const rowIndex = newLayout.gridRows.findIndex(row => row.id === rowId);
+        if (rowIndex !== -1) {
+          draggedSection = newLayout.gridRows[rowIndex].sections[parseInt(colIndex)][dragIndex];
+          newLayout.gridRows[rowIndex].sections[parseInt(colIndex)].splice(dragIndex, 1);
+        }
+      } else if (fromLocation.startsWith('custom')) {
+        const [rowId, colId] = fromLocation.split('-');
+        const rowIndex = newLayout.customRows.findIndex(row => row.id === rowId);
+        if (rowIndex !== -1) {
+          const colIndex = newLayout.customRows[rowIndex].columns.findIndex(col => col.id === colId);
+          if (colIndex !== -1) {
+            draggedSection = newLayout.customRows[rowIndex].columns[colIndex].sections[dragIndex];
+            newLayout.customRows[rowIndex].columns[colIndex].sections.splice(dragIndex, 1);
+          }
+        }
       }
-      
-      // Add to new location
+
+      if (!draggedSection) return newLayout;
+
+      // 2. Add to new location
       if (toLocation === 'sidebar') {
         newLayout.sidebarSections.splice(hoverIndex, 0, draggedSection);
+        draggedSection.location = 'sidebar';
       } else if (toLocation === 'main') {
         newLayout.mainSections.splice(hoverIndex, 0, draggedSection);
+        draggedSection.location = 'main';
+      } else if (toLocation.startsWith('grid')) {
+        const [rowId, colIndex] = toLocation.split('-');
+        const rowIndex = newLayout.gridRows.findIndex(row => row.id === rowId);
+        if (rowIndex !== -1) {
+          if (!newLayout.gridRows[rowIndex].sections[parseInt(colIndex)]) {
+            newLayout.gridRows[rowIndex].sections[parseInt(colIndex)] = [];
+          }
+          newLayout.gridRows[rowIndex].sections[parseInt(colIndex)].splice(hoverIndex, 0, draggedSection);
+          draggedSection.location = toLocation;
+        }
+      } else if (toLocation.startsWith('custom')) {
+        const [rowId, colId] = toLocation.split('-');
+        const rowIndex = newLayout.customRows.findIndex(row => row.id === rowId);
+        if (rowIndex !== -1) {
+          const colIndex = newLayout.customRows[rowIndex].columns.findIndex(col => col.id === colId);
+          if (colIndex !== -1) {
+            newLayout.customRows[rowIndex].columns[colIndex].sections.splice(hoverIndex, 0, draggedSection);
+            draggedSection.location = toLocation;
+          }
+        }
       }
-      
+
       return newLayout;
     });
+  };
+  
+  const handleSectionDrop = (sectionId: string, location: string) => {
+    // This function intentionally left blank.  The moveSection handles the drop logic now.
+    // It is here to satisfy the DropZone's onDrop prop.
   };
 
   const addSection = (type: string, title: string, location: string = 'main') => {
@@ -366,32 +418,59 @@ export default function TemplateBuilder() {
       },
       location
     };
-    
+
     setPageLayout(prev => {
       const newLayout = { ...prev };
       if (location === 'sidebar') {
         newLayout.sidebarSections.push(newSection);
       } else if (location === 'main') {
         newLayout.mainSections.push(newSection);
+      } else if (location.startsWith('grid')) {
+        const [rowId, colIndex] = location.split('-');
+        const rowIndex = newLayout.gridRows.findIndex(row => row.id === rowId);
+        if (rowIndex !== -1) {
+          if (!newLayout.gridRows[rowIndex].sections[parseInt(colIndex)]) {
+            newLayout.gridRows[rowIndex].sections[parseInt(colIndex)] = [];
+          }
+          newLayout.gridRows[rowIndex].sections[parseInt(colIndex)].push(newSection);
+        }
+      } else if (location.startsWith('custom')) {
+        const [rowId, colId] = location.split('-');
+        const rowIndex = newLayout.customRows.findIndex(row => row.id === rowId);
+        if (rowIndex !== -1) {
+          const colIndex = newLayout.customRows[rowIndex].columns.findIndex(col => col.id === colId);
+          if (colIndex !== -1) {
+            newLayout.customRows[rowIndex].columns[colIndex].sections.push(newSection);
+          }
+        }
       }
       return newLayout;
     });
   };
 
+  const handleAddSectionToLocation = (location: string) => {
+    // Open a modal or UI to select the section type to add
+    const sectionType = prompt("Enter section type (e.g., header, summary):");
+    const sectionTitle = prompt("Enter section title:");
+    if (sectionType && sectionTitle) {
+      addSection(sectionType, sectionTitle, location);
+    }
+  };
+
   const updateSection = (id: string, updates: Partial<TemplateSection>) => {
     setPageLayout(prev => {
       const newLayout = { ...prev };
-      
+
       // Update in sidebar
       newLayout.sidebarSections = newLayout.sidebarSections.map(section => 
         section.id === id ? { ...section, ...updates } : section
       );
-      
+
       // Update in main
       newLayout.mainSections = newLayout.mainSections.map(section => 
         section.id === id ? { ...section, ...updates } : section
       );
-      
+
       // Update in grid rows
       newLayout.gridRows = newLayout.gridRows.map(row => ({
         ...row,
@@ -402,7 +481,16 @@ export default function TemplateBuilder() {
           ])
         )
       }));
-      
+
+       // Update in custom rows
+       newLayout.customRows = newLayout.customRows.map(row => ({
+        ...row,
+        columns: row.columns.map(col => ({
+          ...col,
+          sections: col.sections.map(section => section.id === id ? { ...section, ...updates } : section)
+        }))
+      }));
+
       return newLayout;
     });
   };
@@ -410,10 +498,10 @@ export default function TemplateBuilder() {
   const deleteSection = (id: string) => {
     setPageLayout(prev => {
       const newLayout = { ...prev };
-      
+
       newLayout.sidebarSections = newLayout.sidebarSections.filter(section => section.id !== id);
       newLayout.mainSections = newLayout.mainSections.filter(section => section.id !== id);
-      
+
       newLayout.gridRows = newLayout.gridRows.map(row => ({
         ...row,
         sections: Object.fromEntries(
@@ -423,10 +511,18 @@ export default function TemplateBuilder() {
           ])
         )
       }));
-      
+
+      newLayout.customRows = newLayout.customRows.map(row => ({
+        ...row,
+        columns: row.columns.map(col => ({
+          ...col,
+          sections: col.sections.filter(section => section.id !== id)
+        }))
+      }));
+
       return newLayout;
     });
-    
+
     if (selectedSection === id) {
       setSelectedSection(null);
     }
@@ -441,13 +537,33 @@ export default function TemplateBuilder() {
         id: Date.now().toString(),
         title: `${sectionToDuplicate.title} (Copy)`
       };
-      
+
       setPageLayout(prev => {
         const newLayout = { ...prev };
         if (sectionToDuplicate.location === 'sidebar') {
           newLayout.sidebarSections.push(newSection);
         } else if (sectionToDuplicate.location === 'main') {
           newLayout.mainSections.push(newSection);
+        } else if (sectionToDuplicate.location.startsWith('grid')) {
+            const [rowId, colIndex] = sectionToDuplicate.location.split('-');
+            const rowIndex = newLayout.gridRows.findIndex(row => row.id === rowId);
+            if (rowIndex !== -1) {
+              if (!newLayout.gridRows[rowIndex].sections[parseInt(colIndex)]) {
+                newLayout.gridRows[rowIndex].sections[parseInt(colIndex)] = [];
+              }
+              newLayout.gridRows[rowIndex].sections[parseInt(colIndex)].push(newSection);
+              newSection.location = sectionToDuplicate.location;
+            }
+        } else if (sectionToDuplicate.location.startsWith('custom')) {
+          const [rowId, colId] = sectionToDuplicate.location.split('-');
+          const rowIndex = newLayout.customRows.findIndex(row => row.id === rowId);
+          if (rowIndex !== -1) {
+            const colIndex = newLayout.customRows[rowIndex].columns.findIndex(col => col.id === colId);
+            if (colIndex !== -1) {
+              newLayout.customRows[rowIndex].columns[colIndex].sections.push(newSection);
+              newSection.location = sectionToDuplicate.location;
+            }
+          }
         }
         return newLayout;
       });
@@ -463,7 +579,7 @@ export default function TemplateBuilder() {
     for (let i = 0; i < columns; i++) {
       newRow.sections[i] = [];
     }
-    
+
     setPageLayout(prev => ({
       ...prev,
       gridRows: [...prev.gridRows, newRow]
@@ -485,7 +601,7 @@ export default function TemplateBuilder() {
       },
       location: 'main'
     };
-    
+
     setPageLayout(prev => ({
       ...prev,
       mainSections: [...prev.mainSections, newSection]
@@ -548,7 +664,7 @@ export default function TemplateBuilder() {
       columns: 1,
       sections: { 0: [] }
     };
-    
+
     setPageLayout(prev => ({
       ...prev,
       gridRows: [newRow, ...prev.gridRows]
@@ -561,7 +677,7 @@ export default function TemplateBuilder() {
       columns: 2,
       sections: { 0: [], 1: [] }
     };
-    
+
     setPageLayout(prev => ({
       ...prev,
       gridRows: [...prev.gridRows, newRow]
@@ -581,13 +697,13 @@ export default function TemplateBuilder() {
           const otherColumns = updatedColumns.filter(col => col.id !== columnId);
           const remainingWidth = 100 - newWidth;
           const totalOtherWidth = otherColumns.reduce((sum, col) => sum + col.width, 0);
-          
+
           if (totalOtherWidth > 0) {
             otherColumns.forEach(col => {
               col.width = (col.width / totalOtherWidth) * remainingWidth;
             });
           }
-          
+
           return { ...row, columns: updatedColumns };
         }
         return row;
@@ -687,13 +803,14 @@ export default function TemplateBuilder() {
       .field-label { font-weight: 600; color: #555; }
       .field-value { color: #333; }
       .contact-info { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: ${globalStyles.headerStyle === 'centered' ? 'center' : 'flex-start'}; }
-      .contact-item { display: flex; align-items: center; gap: 0.25rem; }
+      .```python
+contact-item { display: flex; align-items: center; gap: 0.25rem; }
       .photo-circle { border-radius: 50%; }
       .photo-square { border-radius: 8px; }
     `;
 
     let html = '<div class="resume-template">';
-    
+
     if (pageLayout.type === 'single') {
       html += '<div class="template-layout layout-single">';
       html += '<div class="main-content">';
@@ -703,7 +820,7 @@ export default function TemplateBuilder() {
       html += '</div></div>';
     } else if (pageLayout.type === 'left-sidebar' || pageLayout.type === 'right-sidebar') {
       html += `<div class="template-layout ${pageLayout.type === 'left-sidebar' ? 'layout-left-sidebar' : 'layout-right-sidebar'}">`;
-      
+
       if (pageLayout.type === 'left-sidebar') {
         html += '<div class="sidebar">';
         pageLayout.sidebarSections.forEach(section => {
@@ -711,13 +828,13 @@ export default function TemplateBuilder() {
         });
         html += '</div>';
       }
-      
+
       html += '<div class="main-content">';
       pageLayout.mainSections.forEach(section => {
         html += generateSectionHTML(section);
       });
       html += '</div>';
-      
+
       if (pageLayout.type === 'right-sidebar') {
         html += '<div class="sidebar">';
         pageLayout.sidebarSections.forEach(section => {
@@ -725,7 +842,7 @@ export default function TemplateBuilder() {
         });
         html += '</div>';
       }
-      
+
       html += '</div>';
     } else if (pageLayout.type === 'grid') {
       pageLayout.gridRows.forEach(row => {
@@ -740,9 +857,9 @@ export default function TemplateBuilder() {
         html += '</div>';
       });
     }
-    
+
     html += '</div>';
-    
+
     return { html, css };
   };
 
@@ -753,9 +870,9 @@ export default function TemplateBuilder() {
     if (section.style.borderRadius) sectionHTML += `border-radius: ${section.style.borderRadius}px; `;
     if (section.style.textAlign) sectionHTML += `text-align: ${section.style.textAlign}; `;
     sectionHTML += '">';
-    
+
     sectionHTML += `<h3 class="section-title">${section.title}</h3>`;
-    
+
     // Generate sample data based on section type
     if (section.type === 'header') {
       sectionHTML += `
@@ -809,7 +926,7 @@ export default function TemplateBuilder() {
         </div>
       `;
     }
-    
+
     sectionHTML += '</div>';
     return sectionHTML;
   };
@@ -1148,7 +1265,7 @@ export default function TemplateBuilder() {
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label>Font Family</Label>
                     <select
@@ -1178,7 +1295,7 @@ export default function TemplateBuilder() {
                 <CardContent>
                   <div className="min-h-[600px] bg-gray-50 rounded-lg p-4">
                     {pageLayout.type === 'single' && (
-                      <DropZone location="main" onDrop={() => {}}>
+                      <DropZone location="main" onDrop={handleSectionDrop}>
                         {pageLayout.mainSections.map((section, index) => (
                           <DraggableItem
                             key={section.id}
@@ -1220,7 +1337,12 @@ export default function TemplateBuilder() {
                               {Array.from({ length: row.columns }).map((_, colIndex) => (
                                 <div key={colIndex} className="bg-gray-100 p-2 rounded min-h-[100px]">
                                   <div className="text-xs text-gray-500 mb-1">Column {colIndex + 1}</div>
-                                  <DropZone location={`${row.id}-${colIndex}`} onDrop={() => {}}>
+                                  <DropZone 
+                                    location={`${row.id}-${colIndex}`} 
+                                    onDrop={handleSectionDrop}
+                                    showAddButton={(row.sections[colIndex] || []).length === 0}
+                                    onAddSection={() => handleAddSectionToLocation(`${row.id}-${colIndex}`)}
+                                  >
                                     {(row.sections[colIndex] || []).map((section, sectionIndex) => (
                                       <DraggableItem
                                         key={section.id}
@@ -1248,7 +1370,7 @@ export default function TemplateBuilder() {
                           <div className={`${pageLayout.type === 'right-sidebar' ? 'col-start-3' : ''}`}>
                             <div className="bg-gray-100 p-3 rounded-lg min-h-[200px]">
                               <h4 className="font-medium mb-2">Sidebar</h4>
-                              <DropZone location="sidebar" onDrop={() => {}}>
+                              <DropZone location="sidebar" onDrop={handleSectionDrop}>
                                 {pageLayout.sidebarSections.map((section, index) => (
                                   <DraggableItem
                                     key={section.id}
@@ -1271,7 +1393,7 @@ export default function TemplateBuilder() {
                           <div className="col-span-2">
                             <div className="bg-white p-3 rounded-lg min-h-[200px]">
                               <h4 className="font-medium mb-2">Main Content</h4>
-                              <DropZone location="main" onDrop={() => {}}>
+                              <DropZone location="main" onDrop={handleSectionDrop}>
                                 {pageLayout.mainSections.map((section, index) => (
                                   <DraggableItem
                                     key={section.id}
@@ -1333,7 +1455,7 @@ export default function TemplateBuilder() {
                                       <span className="text-xs">%</span>
                                     </div>
                                   </div>
-                                  <DropZone location={`${row.id}-${column.id}`} onDrop={() => {}}>
+                                  <DropZone location={`${row.id}-${column.id}`} onDrop={handleSectionDrop}>
                                     {column.sections.map((section, sectionIndex) => (
                                       <DraggableItem
                                         key={section.id}
@@ -1383,7 +1505,12 @@ export default function TemplateBuilder() {
                               {Array.from({ length: row.columns }).map((_, colIndex) => (
                                 <div key={colIndex} className="bg-gray-100 p-2 rounded min-h-[100px]">
                                   <div className="text-xs text-gray-500 mb-1">Column {colIndex + 1}</div>
-                                  <DropZone location={`${row.id}-${colIndex}`} onDrop={() => {}}>
+                                  <DropZone 
+                                    location={`${row.id}-${colIndex}`} 
+                                    onDrop={handleSectionDrop}
+                                    showAddButton={(row.sections[colIndex] || []).length === 0}
+                                    onAddSection={() => handleAddSectionToLocation(`${row.id}-${colIndex}`)}
+                                  >
                                     {(row.sections[colIndex] || []).map((section, sectionIndex) => (
                                       <DraggableItem
                                         key={section.id}
@@ -1466,7 +1593,7 @@ export default function TemplateBuilder() {
                             </div>
                           ))}
                         </div>
-                        
+
                         {currentSection.type === 'custom' && (
                           <Button
                             size="sm"
