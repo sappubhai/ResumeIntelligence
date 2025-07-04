@@ -919,7 +919,6 @@ export default function TemplateBuilder() {
                         <Plus className="w-4 h-4 mr-2" />
                         Custom Section
                       </Button>
-                      ))}
                     </TabsContent>
                     <TabsContent value="sidebar" className="space-y-2">
                       {availableSections.map((section) => (
