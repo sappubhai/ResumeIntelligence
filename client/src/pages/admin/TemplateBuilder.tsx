@@ -53,6 +53,8 @@ import { apiRequest } from "@/lib/queryClient";
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { X } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface TemplateSection {
   id: string;
@@ -221,7 +223,7 @@ export default function TemplateBuilder() {
   const [templateCategory, setTemplateCategory] = useState("professional");
   const [selectedSection, setSelectedSection] = useState<string | null>(null);
   const [showSectionModal, setShowSectionModal] = useState(false);
-  const [targetLocation, setTargetLocation] = useState<'main' | 'sidebar'>('main');
+  const [targetLocation, setTargetLocation] = useState<'main' | 'sidebar' | string>('main'); // Allow string for grid/custom locations
   const [pageLayout, setPageLayout] = useState<PageLayout>({
     type: 'single',
     sidebarSections: [],
@@ -451,12 +453,8 @@ export default function TemplateBuilder() {
   };
 
   const handleAddSectionToLocation = (location: string) => {
-    // Open a modal or UI to select the section type to add
-    const sectionType = prompt("Enter section type (e.g., header, summary):");
-    const sectionTitle = prompt("Enter section title:");
-    if (sectionType && sectionTitle) {
-      addSection(sectionType, sectionTitle, location);
-    }
+    setTargetLocation(location);
+    setShowSectionModal(true);
   };
 
   const updateSection = (id: string, updates: Partial<TemplateSection>) => {
@@ -960,18 +958,19 @@ export default function TemplateBuilder() {
                 <TabsContent value="sections" className="space-y-4">
                   <div className="space-y-3">
                     <h3 className="font-medium text-sm text-gray-700">Available Sections</h3>
-                    {availableSections.map((section) => (
-                      <div
-                        key={section.type}
-                        className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 cursor-pointer transition-colors"
-                        onClick={() => addSection(section.type, section.title)}
-                      >
-                        <div className="flex items-center gap-2">
-                          <section.icon className="w-4 h-4" />
-                          <span className="text-sm font-medium">{section.title}</span>
+                    <ScrollArea className="h-[400px] pr-2">
+                      {availableSections.map((section) => (
+                        <div
+                          key={section.type}
+                          className="p-3 border border-gray-200 rounded-lg hover:border-gray-300 cursor-grab transition-colors"
+                        >
+                          <div className="flex items-center gap-2">
+                            <section.icon className="w-4 h-4" />
+                            <span className="text-sm font-medium">{section.title}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </ScrollArea>
                   </div>
                 </TabsContent>
 
@@ -1189,7 +1188,21 @@ export default function TemplateBuilder() {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button variant="outline">
+                  <Button variant="outline" onClick={() => {
+                      const allSections = getAllSections();
+                      const { html, css } = generateTemplate(allSections);
+                      const previewWindow = window.open();
+                      previewWindow?.document.open();
+                      previewWindow?.document.write(`
+                        <html>
+                          <head>
+                            <style>${css}</style>
+                          </head>
+                          <body>${html}</body>
+                        </html>
+                      `);
+                      previewWindow?.document.close();
+                    }}>
                     <Eye className="w-4 h-4 mr-2" />
                     Preview
                   </Button>
@@ -1206,7 +1219,7 @@ export default function TemplateBuilder() {
               {/* Template Canvas */}
               <div className="bg-white rounded-lg shadow-sm border min-h-[800px] p-8 mx-auto max-w-4xl">
                 {pageLayout.type === 'single' && (
-                  <DropZone location="main" onDrop={handleSectionDrop} className="space-y-4">
+                  <DropZone location="main" onDrop={handleSectionDrop} className="space-y-4" showAddButton onAddSection={() => handleAddSectionToLocation('main')}>
                     {pageLayout.mainSections.map((section, index) => (
                       <DraggableItem
                         key={section.id}
@@ -1221,14 +1234,6 @@ export default function TemplateBuilder() {
                         isSelected={selectedSection === section.id}
                       />
                     ))}
-                    <Button
-                      variant="ghost"
-                      className="w-full border-dashed border-2 py-8"
-                      onClick={() => setShowSectionModal(true)}
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Section
-                    </Button>
                   </DropZone>
                 )}
 
@@ -1236,7 +1241,7 @@ export default function TemplateBuilder() {
                   <div className={`grid gap-6 ${pageLayout.type === 'left-sidebar' ? 'grid-cols-[300px_1fr]' : 'grid-cols-[1fr_300px]'}`}>
                     {pageLayout.type === 'left-sidebar' && (
                       <>
-                        <DropZone location="sidebar" onDrop={handleSectionDrop} className="space-y-4">
+                        <DropZone location="sidebar" onDrop={handleSectionDrop} className="space-y-4" showAddButton onAddSection={() => handleAddSectionToLocation('sidebar')}>
                           <h3 className="font-medium text-sm text-gray-600 mb-4">Sidebar</h3>
                           {pageLayout.sidebarSections.map((section, index) => (
                             <DraggableItem
@@ -1252,19 +1257,8 @@ export default function TemplateBuilder() {
                               isSelected={selectedSection === section.id}
                             />
                           ))}
-                          <Button
-                            variant="ghost"
-                            className="w-full border-dashed border-2"
-                            onClick={() => {
-                              setTargetLocation('sidebar');
-                              setShowSectionModal(true);
-                            }}
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Section
-                          </Button>
                         </DropZone>
-                        <DropZone location="main" onDrop={handleSectionDrop} className="space-y-4">
+                        <DropZone location="main" onDrop={handleSectionDrop} className="space-y-4" showAddButton onAddSection={() => handleAddSectionToLocation('main')}>
                           <h3 className="font-medium text-sm text-gray-600 mb-4">Main Content</h3>
                           {pageLayout.mainSections.map((section, index) => (
                             <DraggableItem
@@ -1280,24 +1274,13 @@ export default function TemplateBuilder() {
                               isSelected={selectedSection === section.id}
                             />
                           ))}
-                          <Button
-                            variant="ghost"
-                            className="w-full border-dashed border-2"
-                            onClick={() => {
-                              setTargetLocation('main');
-                              setShowSectionModal(true);
-                            }}
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Section
-                          </Button>
                         </DropZone>
                       </>
                     )}
 
                     {pageLayout.type === 'right-sidebar' && (
                       <>
-                        <DropZone location="main" onDrop={handleSectionDrop} className="space-y-4">
+                        <DropZone location="main" onDrop={handleSectionDrop} className="space-y-4" showAddButton onAddSection={() => handleAddSectionToLocation('main')}>
                           <h3 className="font-medium text-sm text-gray-600 mb-4">Main Content</h3>
                           {pageLayout.mainSections.map((section, index) => (
                             <DraggableItem
@@ -1313,19 +1296,8 @@ export default function TemplateBuilder() {
                               isSelected={selectedSection === section.id}
                             />
                           ))}
-                          <Button
-                            variant="ghost"
-                            className="w-full border-dashed border-2"
-                            onClick={() => {
-                              setTargetLocation('main');
-                              setShowSectionModal(true);
-                            }}
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Section
-                          </Button>
                         </DropZone>
-                        <DropZone location="sidebar" onDrop={handleSectionDrop} className="space-y-4">
+                        <DropZone location="sidebar" onDrop={handleSectionDrop} className="space-y-4" showAddButton onAddSection={() => handleAddSectionToLocation('sidebar')}>
                           <h3 className="font-medium text-sm text-gray-600 mb-4">Sidebar</h3>
                           {pageLayout.sidebarSections.map((section, index) => (
                             <DraggableItem
@@ -1341,17 +1313,6 @@ export default function TemplateBuilder() {
                               isSelected={selectedSection === section.id}
                             />
                           ))}
-                          <Button
-                            variant="ghost"
-                            className="w-full border-dashed border-2"
-                            onClick={() => {
-                              setTargetLocation('sidebar');
-                              setShowSectionModal(true);
-                            }}
-                          >
-                            <Plus className="w-4 h-4 mr-2" />
-                            Add Section
-                          </Button>
                         </DropZone>
                       </>
                     )}
@@ -1368,6 +1329,8 @@ export default function TemplateBuilder() {
                             location={`grid-${row.id}-${colIndex}`}
                             onDrop={handleSectionDrop}
                             className="border-2 border-dashed border-gray-200 rounded-lg p-4 min-h-[200px]"
+                            showAddButton
+                            onAddSection={() => handleAddSectionToLocation(`grid-${row.id}-${colIndex}`)}
                           >
                             <h4 className="text-xs text-gray-500 mb-2">Column {colIndex + 1}</h4>
                             {(row.sections[colIndex] || []).map((section, sectionIndex) => (
@@ -1384,15 +1347,6 @@ export default function TemplateBuilder() {
                                 isSelected={selectedSection === section.id}
                               />
                             ))}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="w-full border-dashed border-2 mt-2"
-                              onClick={() => handleAddSectionToLocation(`grid-${row.id}-${colIndex}`)}
-                            >
-                              <Plus className="w-4 h-4 mr-2" />
-                              Add Section
-                            </Button>
                           </DropZone>
                         ))}
                       </div>
@@ -1427,6 +1381,8 @@ export default function TemplateBuilder() {
                               onDrop={handleSectionDrop}
                               className="border border-gray-200 rounded p-3 min-h-[150px] flex-1"
                               style={{ width: `${column.width}%` }}
+                              showAddButton
+                              onAddSection={() => handleAddSectionToLocation(`custom-${row.id}-${column.id}`)}
                             >
                               <div className="flex justify-between items-center mb-2">
                                 <span className="text-xs text-gray-500">
@@ -1455,15 +1411,6 @@ export default function TemplateBuilder() {
                                   isSelected={selectedSection === section.id}
                                 />
                               ))}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="w-full border-dashed border-2 mt-2"
-                                onClick={() => handleAddSectionToLocation(`custom-${row.id}-${column.id}`)}
-                              >
-                                <Plus className="w-4 h-4 mr-2" />
-                                Add Section
-                              </Button>
                             </DropZone>
                           ))}
                         </div>
@@ -1475,6 +1422,34 @@ export default function TemplateBuilder() {
             </div>
           </div>
         </div>
+        <Dialog open={showSectionModal} onOpenChange={setShowSectionModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Section</DialogTitle>
+            </DialogHeader>
+            <ScrollArea className="h-[400px] pr-2">
+              <div className="grid gap-4 grid-cols-1">
+                {availableSections.map((section) => (
+                  <Button
+                    key={section.type}
+                    variant="outline"
+                    className="justify-start"
+                    onClick={() => {
+                      addSection(section.type, section.title, targetLocation);
+                      setShowSectionModal(false);
+                    }}
+                  >
+                    <section.icon className="w-4 h-4 mr-2" />
+                    {section.title}
+                  </Button>
+                ))}
+              </div>
+            </ScrollArea>
+            <DialogClose asChild>
+                <Button type="button" variant="secondary">Close</Button>
+              </DialogClose>
+          </DialogContent>
+        </Dialog>
       </div>
     </DndProvider>
   );
