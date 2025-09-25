@@ -159,44 +159,50 @@ export default function AdminDashboard() {
           <TabsContent value="overview" className="space-y-6">
             {/* Quick Actions */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-              <Card className="group hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-0">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <Upload className="h-8 w-8" />
-                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                  <CardTitle className="text-xl">Upload Template</CardTitle>
-                  <CardDescription className="text-white/80">
-                    Convert PDF/Word to HTML template
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+              <Link href="/admin/templates/upload">
+                <Card className="group hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-indigo-500 to-purple-600 text-white border-0">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <Upload className="h-8 w-8" />
+                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                    <CardTitle className="text-xl">Upload Template</CardTitle>
+                    <CardDescription className="text-white/80">
+                      Convert PDF/Word to HTML template
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
 
-              <Card className="group hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-purple-500 to-pink-600 text-white border-0">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <Palette className="h-8 w-8" />
-                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                  <CardTitle className="text-xl">Template Builder</CardTitle>
-                  <CardDescription className="text-white/80">
-                    Create custom templates visually
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+              <Link href="/admin/templates/builder">
+                <Card className="group hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-purple-500 to-pink-600 text-white border-0">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <Palette className="h-8 w-8" />
+                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                    <CardTitle className="text-xl">Template Builder</CardTitle>
+                    <CardDescription className="text-white/80">
+                      Create custom templates visually
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
 
-              <Card className="group hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-pink-500 to-orange-600 text-white border-0">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <Users className="h-8 w-8" />
-                    <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                  </div>
-                  <CardTitle className="text-xl">Manage Users</CardTitle>
-                  <CardDescription className="text-white/80">
-                    View and manage platform users
-                  </CardDescription>
-                </CardHeader>
-              </Card>
+              <Link href="/admin/users">
+                <Card className="group hover:shadow-lg transition-all cursor-pointer bg-gradient-to-br from-pink-500 to-orange-600 text-white border-0">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <Users className="h-8 w-8" />
+                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                    <CardTitle className="text-xl">Manage Users</CardTitle>
+                    <CardDescription className="text-white/80">
+                      View and manage platform users
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
             </div>
 
             {/* Stats Cards */}
